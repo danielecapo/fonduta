@@ -55,23 +55,35 @@
 (defn group? [p]
   (= (first p) :group))
 
-(defn x [pt]
-  (pt 1))
+(defn x [p]
+  (p 1))
 
-(defn y [pt]
-  (pt 2))
+(defn y [p]
+  (p 2))
 
-(defn tension [pt]
-  (pt 3))
+(defn tension [p]
+  (p 3))
 
-(defn set-x [pt v]
-  (assoc pt 1 v))
+(defn prevang [p]
+  (p 1))
 
-(defn set-y [pt v]
-  (assoc pt 2 v))
+(defn nextang [p]
+  (p 2))
 
-(defn set-tension [pt t]
-  (assoc pt 3 t))
+(defn set-x [p v]
+  (assoc p 1 v))
+
+(defn set-y [p v]
+  (assoc p 2 v))
+
+(defn set-tension [p t]
+  (assoc p 3 t))
+
+(defn set-prevang [p v]
+  (assoc p 1 v))
+
+(defn set-nextang [p v]
+  (assoc p 2 v))
 
 (defn points [p]
   (subvec p (if (subpath? p) 1 2)))
