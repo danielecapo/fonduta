@@ -76,21 +76,48 @@
 (defn points [p]
   (subvec p (if (subpath? p) 1 2)))
 
+(defn path-count [p]
+  (count (points p)))
+
 (defn content [g]
   (rest g))
+
+(defn group-count [g]
+  (count (content g)))
 
 (defn add-to [p new]
   (conj p new))
 
 (defn path-elt [p i]
-  (get p (+ i 2)))
+  ((points p) i))
+
+(defn cut-path
+  ([p start]
+     (apply subpath (subvec (points p) start)))
+  ([p start end]
+     (apply subpath (subvec (points p) start end))))
+
+(defn join-paths [p1 p2]
+  (apply open-path
+   (concat (points p1) (points p2))))
 
 (defn set-in-path [p i new]
-  (assoc p (+ i 2) new))
+  (assoc p (+ i (if (subpath? p) 1 2)) new))
+
+(defn mod-in-path [p i f & args]
+  (set-in-path
+   p i (apply f (path-elt p i) args)))
+
+(defn group-elt [g i]
+  (get g (+ i 1)))
 
 (defn set-in-group [g i n]
   (assoc g (+ i 1) n))
-                                         
+
+(defn mod-in-group [g i f & args]
+  (set-in-group
+   g i (apply f (group-elt g i) args)))
+
 (defn map-points [f & paths]
   (apply map f (map points paths)))
 
