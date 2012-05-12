@@ -147,79 +147,6 @@
 (defn open [p]
   (assoc p 1 :open))
 
-;;(defn join-paths [p1 p2]
-;;  (apply open-path
-;;   (concat (points p1) (points p2))))
-
-(defn join-paths [pth & pths]
-  (apply open-path
-         (map (fn [p] (apply subpath (points p)))
-              (concat pth pths))))
-
-;;;; geometric transformations of objects
-;;;; skew should be added
-
-(defn dispatch_fn [v & params]
-  (first v))
-
-(defmacro deftransform [name [& params] & bodies]
-  `(do (defmulti ~name dispatch_fn)
-       ~@(map (fn [body] `(defmethod ~name ~(first body) ~(vec params) ~@(rest body))) bodies)))
-
-
-(deftransform translate [p v]
-  (:point (apply pt (vec+ (coords p) v)))
-  (:control (apply cpt (conj (vec+ (coords p) v) (tension p))))
-  (:angle-control p)
-  (:subpath (apply subpath (map-points (fn [o] (translate o v)) p)))
-  (:path (apply path (path-type p) (map-points (fn [o] (translate o v)) p)))
-  (:group (apply group (map-content (fn [o] (translate o v)) p))))
-
-(defn from [v f p & params]
-  (translate (apply f (translate p (vec-neg v)) params) v)) 
-
-(deftransform scale [p f & fy]
-  (:point (apply pt (apply vec-scale (coords p) f fy)))
-  (:control (apply cpt (conj (apply vec-scale (coords p) f fy) (tension p))))
-  (:angle-control (let [fxy (if (nil? (first fy))
-                              1 (/ f (first fy)))]
-                    (acpt (Math/atan (/ (Math/tan (p 1)) fxy))
-                          (Math/atan (/ (Math/tan (p 2)) fxy))
-                          (tension p))))
-  (:subpath (apply subpath (map-points (fn [o] (apply scale o f fy)) p)))
-  (:path (apply path (path-type p) (map-points (fn [o] (apply scale o f fy)) p)))
-  (:group (apply group (map-content (fn [o] (apply scale o f fy)) p))))
-
-(deftransform rotate [p angle]
-  (:point (apply pt (vec-rotate (coords p) angle)))
-  (:control (apply cpt (conj (vec-rotate (coords p) angle) (tension p))))
-  (:angle-control (acpt (+ (p 1) angle) (+ (p 2) angle) (tension p)))
-  (:subpath (apply subpath (map-points (fn [o] (rotate o angle)) p)))
-  (:path (apply path (path-type p) (map-points (fn [o] (rotate o angle)) p)))
-  (:group (apply group (map-content (fn [o] (rotate o angle)) p))))
-
-(deftransform tense [p f]
-  (:point p)
-  (:control (set-tension p (* f (tension p))))
-  (:angle-control (set-tension p (* f (tension p))))
-  (:subpath (apply subpath (map-points (fn [o] (tense o f)) p)))
-  (:path (apply path (path-type p) (map-points (fn [o] (tense o f)) p)))
-  (:group (apply group (map-content (fn [o] (tense o f)) p))))
-
-(defn release [p f]
-  (tense p (/ 1 f)))
-
-(defn multiple-copy [o n f & params]
-  (letfn [(iter [s n]
-            (if (> n 0)
-              (iter (cons (apply f (first s) params) s) (- n 1))
-              s))]
-  (apply group (reverse (iter (list o) n)))))
-
-
-;;;; detecting orientation of paths
-;;;; to be rewritten for subpaths? (or I can flatten subpaths)
-
 (defn flatten-subpaths [p]
   (letfn [(f [p]
             (reduce
@@ -230,6 +157,9 @@
              [] p))]
   (apply path (path-type p) (f (points p)))))
 
+;;;; detecting orientation of paths
+;;;; to be rewritten for subpaths? (or I can flatten subpaths)
+
 
 (defn centroid [p]
   (vec-scale
@@ -238,7 +168,7 @@
    (/ 1 (count (points p)))))
 
 (defn relative-vec [p v]
-  (map-points coords (translate p (vec-neg v))))
+  (map-points (fn [x] (vec+ (coords x) (vec-neg v))) p))
 
 (defn winding-number [p r]
   (let [np (relative-vec p r)]
@@ -286,6 +216,98 @@
 
 (defn ccw [p]
   (if (clockwise? p) (reverse-path p) p))
+
+;;(defn join-paths [p1 p2]
+;;  (apply open-path
+;;   (concat (points p1) (points p2))))
+
+(defn join-paths [pth & pths]
+  "Return an open counterclockwise path formed
+   by subpaths whose points are the points
+   of the original paths"
+  (apply open-path
+         (map (fn [p] (ccw (apply subpath (points p))))
+              (concat pth pths))))
+
+;;;; geometric transformations of objects
+
+
+(defn- dispatch_fn [v & params]
+  (first v))
+
+(defmacro deftransform [name [& params] & bodies]
+  `(do (defmulti ~name dispatch_fn)
+       ~@(map (fn [body] `(defmethod ~name ~(first body) ~(vec params) ~@(rest body))) bodies)))
+
+
+(deftransform translate [p v]
+  (:point (apply pt (vec+ (coords p) v)))
+  (:control (apply cpt (conj (vec+ (coords p) v) (tension p))))
+  (:angle-control p)
+  (:subpath (apply subpath (map-points (fn [o] (translate o v)) p)))
+  (:path (apply path (path-type p) (map-points (fn [o] (translate o v)) p)))
+  (:group (apply group (map-content (fn [o] (translate o v)) p))))
+
+
+(defn from [v f p & params]
+  "Example: (from [10 10] rotate my-path (rad 90))
+   from uses v as the reference point for the transformation"
+  (translate (apply f (translate p (vec-neg v)) params) v)) 
+
+(deftransform scale [p f & fy]
+  (:point (apply pt (apply vec-scale (coords p) f fy)))
+  (:control (apply cpt (conj (apply vec-scale (coords p) f fy) (tension p))))
+  (:angle-control (let [fxy (if (nil? (first fy))
+                              1 (/ f (first fy)))]
+                    (acpt (Math/atan (/ (Math/tan (p 1)) fxy))
+                          (Math/atan (/ (Math/tan (p 2)) fxy))
+                          (tension p))))
+  (:subpath (apply subpath (map-points (fn [o] (apply scale o f fy)) p)))
+  (:path (apply path (path-type p)
+                (map-points (fn [o] (apply scale o f fy)) p)))
+  (:group (apply group (map-content (fn [o] (apply scale o f fy)) p))))
+
+(deftransform rotate [p angle]
+  (:point (apply pt (vec-rotate (coords p) angle)))
+  (:control (apply cpt (conj (vec-rotate (coords p) angle) (tension p))))
+  (:angle-control (acpt (+ (p 1) angle) (+ (p 2) angle) (tension p)))
+  (:subpath (apply subpath (map-points (fn [o] (rotate o angle)) p)))
+  (:path (apply path (path-type p) (map-points (fn [o] (rotate o angle)) p)))
+  (:group (apply group (map-content (fn [o] (rotate o angle)) p))))
+
+(deftransform skew-x [p angle]
+  (:point (translate p [(* -1 (Math/tan angle) (y p)) 0]))
+  (:control (translate p [(* -1 (Math/tan angle) (y p)) 0]))
+ ;; !!! (:angle-control (acpt (+ (p 1) angle) (+ (p 2) angle) (tension p)))
+  (:subpath (apply subpath (map-points (fn [o] (skew-x o angle)) p)))
+  (:path (apply path (path-type p) (map-points (fn [o] (skew-x o angle)) p)))
+  (:group (apply group (map-content (fn [o] (skew-x o angle)) p))))
+
+;; tense multiplies the tension parameter for a factor f
+
+(deftransform tense [p f]
+  (:point p)
+  (:control (set-tension p (* f (tension p))))
+  (:angle-control (set-tension p (* f (tension p))))
+  (:subpath (apply subpath (map-points (fn [o] (tense o f)) p)))
+  (:path (apply path (path-type p) (map-points (fn [o] (tense o f)) p)))
+  (:group (apply group (map-content (fn [o] (tense o f)) p))))
+
+(defn release [p f]
+  (tense p (/ 1 f)))
+
+(defn multiple-copy [o n f & args]
+  "o is the object, n is the number of copies,
+   f is a function (for example, a translation)
+   used for copying and args are the other arguments for f"
+  (letfn [(iter [s n]
+            (if (> n 0)
+              (iter (cons (apply f (first s) args) s) (- n 1))
+              s))]
+  (apply group (reverse (iter (list o) n)))))
+
+
+
 
 ;;;; transform the current font format in the base font format
 
