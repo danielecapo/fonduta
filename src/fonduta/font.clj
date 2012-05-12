@@ -31,6 +31,8 @@
 (defn group [& paths]
   (vec (cons :group paths)))
 
+;; predicates
+
 (defn control? [p]
   (= (first p) :control))
 
@@ -46,14 +48,16 @@
 (defn subpath? [p]
   (= (first p) :subpath))
 
+(defn group? [p]
+  (= (first p) :group))
+
+;; accessors
+
 (defn path-type [p]
   (p 1))
 
 (defn closed? [p]
   (and (path? p) (= (path-type p) :closed)))
-
-(defn group? [p]
-  (= (first p) :group))
 
 (defn x [p]
   (p 1))
@@ -70,6 +74,29 @@
 (defn nextang [p]
   (p 2))
 
+(defn coords [point]
+  [(x point) (y point)])
+
+(defn points [p]
+  (subvec p (if (subpath? p) 1 2)))
+
+(defn path-count [p]
+  (count (points p)))
+
+(defn content [g]
+  (rest g))
+
+(defn group-count [g]
+  (count (content g)))
+
+(defn path-elt [p i]
+  ((points p) i))
+
+(defn group-elt [g i]
+  (get g (+ i 1)))
+
+;; 'change'
+
 (defn set-x [p v]
   (assoc p 1 v))
 
@@ -85,23 +112,8 @@
 (defn set-nextang [p v]
   (assoc p 2 v))
 
-(defn points [p]
-  (subvec p (if (subpath? p) 1 2)))
-
-(defn path-count [p]
-  (count (points p)))
-
-(defn content [g]
-  (rest g))
-
-(defn group-count [g]
-  (count (content g)))
-
 (defn add-to [p new]
   (conj p new))
-
-(defn path-elt [p i]
-  ((points p) i))
 
 (defn cut-path
   ([p start]
@@ -109,19 +121,12 @@
   ([p start end]
      (apply subpath (subvec (points p) start end))))
 
-(defn join-paths [p1 p2]
-  (apply open-path
-   (concat (points p1) (points p2))))
-
 (defn set-in-path [p i new]
   (assoc p (+ i (if (subpath? p) 1 2)) new))
 
 (defn mod-in-path [p i f & args]
   (set-in-path
    p i (apply f (path-elt p i) args)))
-
-(defn group-elt [g i]
-  (get g (+ i 1)))
 
 (defn set-in-group [g i n]
   (assoc g (+ i 1) n))
@@ -136,21 +141,22 @@
 (defn map-content [f & groups]
   (apply map f (map content groups)))
 
-(defn coords [point]
-  [(x point) (y point)])
-
 (defn close [p]
   (assoc p 1 :closed))
 
 (defn open [p]
   (assoc p 1 :open))
 
-(defn join [pth & pths]
+;;(defn join-paths [p1 p2]
+;;  (apply open-path
+;;   (concat (points p1) (points p2))))
+
+(defn join-paths [pth & pths]
   (apply open-path
          (map (fn [p] (apply subpath (points p)))
               (concat pth pths))))
 
-;;;; transformations of objects
+;;;; geometric transformations of objects
 ;;;; skew should be added
 
 (defn dispatch_fn [v & params]
