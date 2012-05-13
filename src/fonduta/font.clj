@@ -155,22 +155,34 @@
                  (concat pts (f (points x)))
                  (concat pts [x])))
              [] p))]
-  (apply path (path-type p) (f (points p)))))
+    (apply path (path-type p) (f (points p)))))
+
+(defn reverse-subpath [p]
+  (cond (subpath? p) (apply subpath
+                            (reverse (map reverse-subpath (points p))))
+        (angle-control? p) (acpt (p 2) (p 1) (tension p))
+        :else p))
+
+(defn reverse-path [p]
+  (apply path (path-type p) (reverse (map reverse-subpath (points p)))))
 
 ;;;; detecting orientation of paths
 ;;;; to be rewritten for subpaths? (or I can flatten subpaths)
 
 
-(defn centroid [p]
+(defn- centroid [p]
   (vec-scale
    (reduce vec+
            (map-points coords p))
    (/ 1 (count (points p)))))
 
-(defn relative-vec [p v]
+(defn- relative-vec [p v]
   (map-points (fn [x] (vec+ (coords x) (vec-neg v))) p))
 
-(defn winding-number [p r]
+;; for winding number see:
+;; http://stackoverflow.com/questions/4208795/graphicspath-isclockwise-extension-method
+
+(defn- winding-number [p r]
   (let [np (relative-vec p r)]
     (reduce (fn [w v]
               (let [[x1 y1] (first v)
@@ -188,8 +200,11 @@
                       :else w)))
             0 (map list np (take (count np) (rest (cycle np)))))))
 
-(defn remove-angle-control [p]
+(defn- remove-angle-control [p]
   (apply path (path-type p) (filter (complement angle-control?) (points p))))
+
+;; for clockwise see:
+;; http://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order
 
 (defn clockwise? [p]
   (let [p (map-points coords (remove-angle-control (flatten-subpaths p)))]
@@ -200,16 +215,8 @@
                0 (map list p (take (count p) (rest (cycle p)))))
        0)))
 
-(defn reverse-subpath [p]
-  (cond (subpath? p) (apply subpath
-                            (reverse (map reverse-subpath (points p))))
-        (angle-control? p) (acpt (p 2) (p 1) (tension p))
-        :else p))
-
-(defn reverse-path [p]
-  (apply path (path-type p) (reverse (map reverse-subpath (points p)))))
-
-;; impose clockwise or counterclockwise orientation to paths
+;; impose clockwise or counterclockwise directions to paths
+;; I think it is useful to set explicitly the direction
 
 (defn cw [p]
   (if (clockwise? p) p (reverse-path p)))
@@ -275,10 +282,17 @@
   (:path (apply path (path-type p) (map-points (fn [o] (rotate o angle)) p)))
   (:group (apply group (map-content (fn [o] (rotate o angle)) p))))
 
+(defn- skew-x-angle [a angle]
+  (+ (rad 90)
+     (Math/atan (+ (Math/tan (- a (rad 90)))
+                   (Math/tan angle)))))
+
 (deftransform skew-x [p angle]
   (:point (translate p [(* -1 (Math/tan angle) (y p)) 0]))
   (:control (translate p [(* -1 (Math/tan angle) (y p)) 0]))
- ;; !!! (:angle-control (acpt (+ (p 1) angle) (+ (p 2) angle) (tension p)))
+  (:angle-control (acpt (skew-x-angle (prevang p) angle)
+                        (skew-x-angle (nextang p) angle)
+                        (tension p)))
   (:subpath (apply subpath (map-points (fn [o] (skew-x o angle)) p)))
   (:path (apply path (path-type p) (map-points (fn [o] (skew-x o angle)) p)))
   (:group (apply group (map-content (fn [o] (skew-x o angle)) p))))
@@ -308,10 +322,9 @@
 
 
 
+;;;; transform the current font format in the base font format (see basefont)
 
-;;;; transform the current font format in the base font format
-
-(defn intersect [[x1 y1] [x2 y2] [a1 a2]]
+(defn- intersect [[x1 y1] [x2 y2] [a1 a2]]
   (let [t1 (Math/tan a1)
         t2 (Math/tan a2)]
     (cond (= t1 0.0) [(+ x2 (/ (- y1 y2) t2)) y1]
@@ -320,7 +333,7 @@
                              (- t1 t2))]
                    [xc (+ (* t1 (- xc x1)) y1)]))))
 
-(defn offcurve [p1 ct p2]
+(defn- offcurve [p1 ct p2]
   (let [p1 (coords p1)
         p2 (coords p2)
         ctc (if (control? ct)
@@ -330,7 +343,7 @@
      (vec+ p2 (vec-scale (vec- ctc p2) (tension ct)))]))
 
 
-(defn base-outline [p]
+(defn- base-outline [p]
   (let [p (flatten-subpaths p)
         f (first (points p))
         pts (if (control? f) (conj (subvec (points p) 1) f) (points p))] 
@@ -345,7 +358,7 @@
                  (rest (if (closed? p) (cycle pts) pts))
                  (rest (rest (cycle pts)))))))
 
-(defn base-outlines [v t]
+(defn- base-outlines [v t]
   (if (nil? t) v
       (if (group? t)
         (concat v (reduce base-outlines [] (content t)))
@@ -360,7 +373,7 @@
 
 ;;;; alignments
 
-(defn build-alignments [alignments]
+(defn- build-alignments [alignments]
   (map (fn [x] (let [n (first x)]
                  [(keyword (name n)) n]))
        (partition 2 alignments)))
@@ -382,7 +395,7 @@
 
 ;;;; font macro
 
-(defn make-opt [opt]
+(defn- make-opt [opt]
   (if (= :grid (opt 0))
     `(base/font* ~@(rest opt))
     '(identity)))
@@ -396,12 +409,20 @@
                  ~@glyphs))
     ~@(map make-opt opts)))
 
-;       {:name ~name,
-;        :aligments ~(build-alignments alignments),
-;        :glyphs [~@glyphs]}))
+;;;; foundry
+;;;; a foundry wrap a font inside a function
+;;;; the arguments passed to the foundry are the parameters used by the fonts
+;;;; calling the foundry evaluates the font with the parameters supplied
 
-;(defmacro overshooted [vertical]
-;  `(+ ~vertical ~(overshoot-symbol vertical)))
+(defn- parameters-list [params]
+  {:keys (vec (map first (partition 2 params)))
+    :or (apply hash-map params)})
+
+(defmacro deffoundry [fontname [& params] & body-forms]
+  `(defn ~fontname [& ~(parameters-list params)]
+     (font ~(keyword (name fontname)) ~@body-forms)))
+
+
 
 ;;;; primitives
 
@@ -449,7 +470,7 @@
 (defn rule [f & args]
   (fn [x] (apply f x args)))
 
-(defn map-rules [rules points]
+(defn- map-rules [rules points]
   (map (fn [r p]
          (if (vector? r)
            (apply subpath (map (fn [r] (r p)) r))
@@ -464,63 +485,21 @@
       (ccw (closed-path (apply subpath (points counterpunch))
                         (reverse-subpath (apply subpath new-points)))))))
 
-(defmacro ctpunch [rules counterpunch]
-  (let [new-rules (gensym)
-        new-points (gensym)
-        r (gensym)
-        p (gensym)]
-    `(let [~new-rules  [~@(map (fn [r] (cons 'rule r)) rules)]
-           ~new-points (map (fn [~r ~p] (~r ~p)) ~new-rules (points ~counterpunch))]
-       (if (closed? ~counterpunch) 
-         (group (cw ~counterpunch) (ccw (apply closed-path ~new-points)))
-         (ccw
-          (closed-path (apply subpath (points ~counterpunch))
-                       (reverse-subpath (apply subpath ~new-points))))))))
+;; (defmacro ctpunch [rules counterpunch]
+;;   (let [new-rules (gensym)
+;;         new-points (gensym)
+;;         r (gensym)
+;;         p (gensym)]
+;;     `(let [~new-rules  [~@(map (fn [r] (cons 'rule r)) rules)]
+;;            ~new-points (map (fn [~r ~p] (~r ~p)) ~new-rules (points ~counterpunch))]
+;;        (if (closed? ~counterpunch) 
+;;          (group (cw ~counterpunch) (ccw (apply closed-path ~new-points)))
+;;          (ccw
+;;           (closed-path (apply subpath (points ~counterpunch))
+;;                        (reverse-subpath (apply subpath ~new-points))))))))
   
 ;;(defmacro ctpunch [rules counterpunch]
 ;;  (let [new (gensym)]
 ;;    `(let [~new (list ~@(map (fn [r] (make-rule r)) rules))]
 ;;       ~new)))
 
-;; (font
-;;  :abc
-;;  [descender  [-240 -10]
-;;   baseline   [0 -10]
-;;   xheight    [500 10]
-;;   small-caps [550 10]
-;;   caps       [700 12]
-;;   ascender   [740 10]]
-;;   [:o [600 0]
-;;    (tense (ccw (circle 100 (overshoot :baseline) 500 (overshoot :xheight))) 1.2)
-;;    (tense (cw (circle 150 20 450 480)))])
-   
-   
-;; [:erase [[10 20] [10 100 .3] [100 100]]]
-
-(defn parameters-list [params]
-  {:keys (vec (map first (partition 2 params)))
-    :or (apply hash-map params)})
-
-(defmacro deffoundry [fontname [& params] & body-forms]
-  `(defn ~fontname [& ~(parameters-list params)]
-     (font ~(keyword (name fontname)) ~@body-forms)))
-
-
-;; (deffoundry abc
-;;   [stem 19
-;;    contrast 1
-;;    width 1
-;;    space 1]
-;;   [h-stems (* stem contrast)
-;;    v-curve (* stem 1.2)
-;;    h-curves (* v-curves contrast)]
-;;   [:metrics
-;;    [descender -249 -10]]
-;;   [:glyphs
-;;    [:o
-              
-
-;; (defn ->base [f]
-;;   (apply base/font (get f :name)
-;;              (into [] (get f :vertical-metrics))
-;;              (map base-glyph (get f :glyphs))))
