@@ -217,3 +217,58 @@
 
       (do (show! fr)
           (attacher f)))))
+
+
+;;;; vector operations on fonts
+;;;; implementing font 'math'
+;;;; see robofab.org for the idea of glyph math
+
+(defn glyph-op [f g1 g2]
+  (apply glyph (:name g1)
+         (f (:advance g1) (:advance g2))
+         (map (fn [o1 o2] (map f o1 o2)) (:outlines g1) (:outlines g2))))
+
+(defn glyph+ [g1 & gs]
+  (reduce (fn [a b] (glyph-op vec+ a b)) g1 gs))
+
+
+(defn glyph- [g1 & gs]
+  (reduce (fn [a b] (glyph-op vec- a b)) g1 gs))
+
+(defn glyph* [g fx & [fy]]
+  (let [fy (if (nil? fy) fx fy)]
+    (apply glyph (:name g)
+           (vec-scale (:advance g) fx fy)
+           (map (fn [o1]
+                  (map (fn [p] (vec-scale p fx fy)) o1))
+                (:outlines g)))))
+
+(defn glyph-neg [g]
+  (glyph* g -1))
+
+(defn alignments-op [f a1 a2]
+  (let [ks (clojure.set/intersection (set (keys a1)) (set (keys a2)))]
+    (into {} (map (fn [k] [k (f (get a1 k) (get a2 k))]) ks))))
+
+(defn font-op [f fg f1 f2]
+  (apply font
+         (:name f1)
+         (alignments-op f (:alignments f1) (:alignments f2))
+         (map fg (sorted-glyphs f1) (sorted-glyphs f2))))
+
+(defn font+ [f1 & fs]
+  (reduce (fn [a b] (font-op + glyph+ a b)) f1 fs))
+
+(defn font- [f1 & fs]
+  (reduce (fn [a b] (font-op - glyph- a b)) f1 fs))
+
+(defn font* [f fx & [fy]]
+  (let [fy (if (nil? fy) fx fy)]
+    (apply font
+           (:name f)
+           (map (fn [[k v]] [k (* v fy)]) (:alignments f))
+           (map (fn [g] (glyph* g fx fy)) (glyphs f)))))
+
+(defn interpolation [f1 f2 x & [y]]
+  (let [y (if (nil? y) x y)]
+    (font+ f1 (font* (font- f2 f1) x y))))
