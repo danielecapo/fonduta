@@ -358,7 +358,7 @@
                  (rest (if (closed? p) (cycle pts) pts))
                  (rest (rest (cycle pts)))))))
 
-(defn- base-outlines [v t]
+(defn base-outlines [v t]
   (if (nil? t) v
       (if (group? t)
         (concat v (reduce base-outlines [] (content t)))

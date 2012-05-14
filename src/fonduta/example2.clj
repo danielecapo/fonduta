@@ -61,7 +61,7 @@
                                           h-stems])]
                                   (rule translate d)
                                   (rule translate h)]
-                             n-counter)
+                                 n-counter)
    p-right          (use-ctpunch [[(rule translate (vec-scale v 0.5))
                                    (rule translate
                                          [(min (* (+ counter-width v-stems) 0.5)
@@ -70,12 +70,12 @@
                                   (rule translate d)
                                   (rule translate (vec-scale d 1 -1))
                                   (rule translate (vec-neg v))]
-                             p-counter)
-   c                (ctpunch [(translate (vec-neg v))
-                              (translate (vec-scale d -1))
-                              (translate (vec-scale d -1 1))
-                              (translate v)]
-                             c-counter)
+                                 p-counter)
+   c                (use-ctpunch [(rule translate (vec-neg v))
+                                  (rule translate (vec-scale d -1))
+                                  (rule translate (vec-scale d -1 1))
+                                  (rule translate v)]
+                                 c-counter)
    i-dot            (translate (rect [0 0] d)
                                [space (min (+ (alignment x-height) h-stems)
                                            (- (alignment ascender) h-stems))])]
@@ -103,7 +103,7 @@
                           (pt 0 0)
                           (pt counter-width 0))
                (translate [(+ space v-stems) h-stems]))))
-                  
+   
    
    (glyph :b
           []
@@ -133,16 +133,16 @@
            opening       (/ (- counter-height bar-height) 2.0)
            open-ratio    (/ opening counter-height)]
           [(+ (* 2 space) black-width) 0]
-          (ctpunch [(translate (vec-neg v))
-                    (translate (vec-neg d))
-                    (translate (vec-scale d -1 1))
-                    (translate d)
-                    (translate h)]
-                   (-> (open-path (pt (- black-width v-stems) 0)
-                                  (pt 0 0)
-                                  (pt 0 counter-height)
-                                  (pt counter-width counter-height)
-                                  (pt counter-width (- counter-height opening)))
+          (use-ctpunch [(rule translate (vec-neg v))
+                        (rule translate (vec-neg d))
+                        (rule translate (vec-scale d -1 1))
+                        (rule translate d)
+                        (rule translate h)]
+                       (-> (open-path (pt (- black-width v-stems) 0)
+                                      (pt 0 0)
+                                      (pt 0 counter-height)
+                                      (pt counter-width counter-height)
+                                      (pt counter-width (- counter-height opening)))
                        (translate [(+ space v-stems) h-stems])))
           (translate (rect [0 0] [black-width bar-height])
                      [space (+ opening h-stems)]))
@@ -191,11 +191,11 @@
    (glyph :o
           [d [v-stems h-stems]]
           n-advance
-          (ctpunch [(translate (vec-scale d -1.0 -1.0))
-                    (translate (vec-scale d 1.0 -1.0))
-                    (translate d)
-                    (translate (vec-scale d -1.0 1.0))]
-                   o-counter))
+          (use-ctpunch [(rule translate (vec-scale d -1.0 -1.0))
+                        (rule translate (vec-scale d 1.0 -1.0))
+                        (rule translate d)
+                        (rule translate (vec-scale d -1.0 1.0))]
+                       o-counter))
    (glyph :p
           []
           n-advance

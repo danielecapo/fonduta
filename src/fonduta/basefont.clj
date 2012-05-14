@@ -167,7 +167,7 @@
 
 (defn- update-font [canv sliders text f]
   (let [sliders (map (fn [x]
-                       [(config x :id) (/ (config x :value) 100.0)])
+                       [(config x :id) (/ (config x :value) 1000.0)])
                      sliders)
         text (config text :text)]
     (config! canv
@@ -178,19 +178,19 @@
 
 (defn- update-labels [sliders labels]
   (let [sliders (map (fn [x]
-                       (/ (config x :value) 100.0))
+                       (/ (config x :value) 1000.0))
                      sliders)]
     (doseq [[l s] (map list labels sliders)]
       (config! l :text s))))
 
-(defn make-frame-with-sliders [title f glyphs sliders]
+(defn make-view-with-sliders [title f sliders]
   (let [sl (map (fn [s] (slider :id (s 0)
-                                :min (s 1)
-                                :max (s 2)
-                                :value (s 3)
+                                :min (* (s 1) 1000)
+                                :max (* (s 2) 1000)
+                                :value (* (s 3) 1000)
                                 :class :slider))
                 sliders)
-        text (text :id :text :text (string/join " " (map name glyphs)))
+        text (text :id :text :text "f o n d u t a")
         labels (map (fn [s] (label (name (s 0)))) sliders)
         curval (map (fn [s] (label :text (s 3)
                                    :class :value
@@ -222,6 +222,7 @@
 ;;;; vector operations on fonts
 ;;;; implementing font 'math'
 ;;;; see robofab.org for the idea of glyph math
+;;;; http://robofab.org/howto/glyphmath.html
 
 (defn glyph-op [f g1 g2]
   (apply glyph (:name g1)
