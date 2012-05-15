@@ -324,11 +324,22 @@
 
 ;;;; transform the current font format in the base font format (see basefont)
 
+(defn- approx-equal [a b]
+  (< (Math/abs (- a b)) 0.0001))
+  
+(defn- normalize-angle [a]
+  (let [d (/ a PI)]
+    (* (- d (Math/floor d)) PI)))
+
 (defn- intersect [[x1 y1] [x2 y2] [a1 a2]]
-  (let [t1 (Math/tan a1)
-        t2 (Math/tan a2)]
-    (cond (= t1 0.0) [(+ x2 (/ (- y1 y2) t2)) y1]
-          (= t2 0.0) [(+ x1 (/ (- y2 y1) t1)) y2]
+  (let [t1 (Math/tan (normalize-angle a1))
+        t2 (Math/tan (normalize-angle a2))
+        horizontal (fn [x ya yb t] (+ x (/ (- ya yb) t)))
+        vertical (fn [y xa xb t] (+ (* (- xa xb) t) y))]
+    (cond (approx-equal t1 0) [(horizontal x2 y1 y2 t2) y1]
+          (approx-equal t2 0) [(horizontal x1 y2 y1 t1) y2]
+          (approx-equal t1 (rad 90)) [x1 (vertical y2 x1 x2 t2)]
+          (approx-equal t2 (rad 90)) [x2 (vertical y1 x2 x1 t1)]
           :else (let [xc (/ (+ (- (* x1 t1) (* x2 t2)) (- y2 y1))
                              (- t1 t2))]
                    [xc (+ (* t1 (- xc x1)) y1)]))))
@@ -338,7 +349,7 @@
         p2 (coords p2)
         ctc (if (control? ct)
               (coords ct)
-              (intersect p1 p2 (coords ct)))]  
+              (intersect p1 p2 (coords ct)))]
     [(vec+ p1 (vec-scale (vec- ctc p1) (tension ct)))
      (vec+ p2 (vec-scale (vec- ctc p2) (tension ct)))]))
 
@@ -346,7 +357,8 @@
 (defn- base-outline [p]
   (let [p (flatten-subpaths p)
         f (first (points p))
-        pts (if (control? f) (conj (subvec (points p) 1) f) (points p))] 
+        pts (if (or (control? f) (angle-control? f))
+              (conj (subvec (points p) 1) f) (points p))] 
     (reduce (fn [c [prev cur next]]
               (if (point? cur)
                 (if (point? prev)
