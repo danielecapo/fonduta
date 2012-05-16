@@ -336,10 +336,10 @@
         t2 (Math/tan (normalize-angle a2))
         horizontal (fn [x ya yb t] (+ x (/ (- ya yb) t)))
         vertical (fn [y xa xb t] (+ (* (- xa xb) t) y))]
-    (cond (approx-equal t1 0) [(horizontal x2 y1 y2 t2) y1]
-          (approx-equal t2 0) [(horizontal x1 y2 y1 t1) y2]
-          (approx-equal t1 (rad 90)) [x1 (vertical y2 x1 x2 t2)]
-          (approx-equal t2 (rad 90)) [x2 (vertical y1 x2 x1 t1)]
+    (cond (approx-equal a1 0) [(horizontal x2 y1 y2 t2) y1]
+          (approx-equal a2 0) [(horizontal x1 y2 y1 t1) y2]
+          (approx-equal a1 (rad 90)) [x1 (vertical y2 x1 x2 t2)]
+          (approx-equal a2 (rad 90)) [x2 (vertical y1 x2 x1 t1)]
           :else (let [xc (/ (+ (- (* x1 t1) (* x2 t2)) (- y2 y1))
                              (- t1 t2))]
                    [xc (+ (* t1 (- xc x1)) y1)]))))
