@@ -332,8 +332,10 @@
     (* (- d (Math/floor d)) PI)))
 
 (defn- intersect [[x1 y1] [x2 y2] [a1 a2]]
-  (let [t1 (Math/tan (normalize-angle a1))
-        t2 (Math/tan (normalize-angle a2))
+  (let [a1 (normalize-angle a1)
+        a2 (normalize-angle a2)
+        t1 (Math/tan a1)
+        t2 (Math/tan a2)
         horizontal (fn [x ya yb t] (+ x (/ (- ya yb) t)))
         vertical (fn [y xa xb t] (+ (* (- xa xb) t) y))]
     (cond (approx-equal a1 0) [(horizontal x2 y1 y2 t2) y1]

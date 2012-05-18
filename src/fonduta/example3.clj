@@ -43,9 +43,9 @@
     (let [counter-height (- (overshooted x-height) hor-curves)
           top-depth (* counter-width depth)]
       (use-ctpunch
-       [(rule translate [(- thickness) 0])
+       [(rule translate [(* -0.5 (+ thickness hor-curves)) 0])
         (rule translate [(- thickness) hor-curves])
-        (rule translate [0 hor-curves])
+        (rule translate [(* (- thickness hor-curves) 0.5) hor-curves])
         (rule translate [thickness hor-curves])
         (rule translate [thickness 0])
         (rule translate [thickness 0])]
@@ -57,47 +57,106 @@
         (pt counter-width (- counter-height top-depth))
         (pt counter-width 0))))))
 
-(defn make-a-bowl [thickness curves hor-curves baseline]
-  (fn [counter-width counter-height]
+(defn make-a-bowl [thickness baseline]
+  (fn [counter-width counter-height curves hor-curves]
     (let [i (- thickness (* thickness (- 1 (/ 1 (+ 1 (/ thickness counter-width))))))]
       (use-ctpunch
        [(rule translate [i hor-curves])
+        (rule translate [0 hor-curves])
         identity
         (rule translate [(- curves) (* hor-curves -0)])
         identity
-        (rule translate [(* hor-curves -0.3) (- hor-curves)])
-        identity]
+        (rule translate [(* (- i thickness) 0.55) (- hor-curves)])
+        (rule tense 1.03)
+        (rule translate [i hor-curves])]
        (closed-path (pt 0 (+ hor-curves counter-height (overshoot baseline)))
-                    (acpt (rad -10) (rad 90) 0.6)
+                    (pt (* counter-width -0.4) (+ hor-curves counter-height (overshoot baseline)))
+                    (acpt 0 (rad 90) 0.57)
                     (pt (- counter-width) (+ hor-curves (* counter-height 0.5) (overshoot baseline)))
-                    (acpt (rad 90) 0 0.56)
-                    (pt (* counter-width -0.62) (+ hor-curves (overshoot baseline)))
-                    (acpt 0 (rad 90) 0.57))))))
+                    (acpt (rad 90) 0 0.55)
+                    (pt (* counter-width -0.56) (+ hor-curves (overshoot baseline)))
+                    (acpt 0 (rad 90) 0.55)
+                    (pt 0 (+ hor-curves (* counter-height 0.6))))))))
                     
 
 
 (defn make-b-bowl [thickness curves hor-curves base x-height]
   (fn [counter-width]
-    (let [counter-height (- (overshooted x-height) (* 2 hor-curves))
+    (let [counter-height (- (overshooted x-height) (overshoot base) (* 2 hor-curves))
           i (- thickness (* thickness (- 0.85 (/ 1 (+ 1.9 (/ thickness counter-width))))))
           bottom-left [0 (+ (overshooted base) hor-curves)]
           top-right [counter-width (- (overshooted x-height) hor-curves)]]
-      (tense
        (group
         (ccw (ellipse (vec- bottom-left [i hor-curves])
                       (vec+ top-right [curves hor-curves])))
-        (cw (ellipse bottom-left top-right)))
-       1.06))))
-    
+        (cw (ellipse bottom-left top-right))))))
+
+(defn letter-c [curves hor-curves base x-height depth]
+  (fn [counter-width]
+    (let [depth (* depth 0.6)
+          counter-height (- (overshooted x-height) (overshoot base) (* 2 hor-curves))
+          left curves
+          right (+ curves counter-width)
+          bottom (+ hor-curves (overshoot base))
+          up (- (overshooted x-height) hor-curves)]
+      (use-ctpunch
+       [(rule translate [curves 0])
+        identity
+        (rule translate [0  hor-curves])
+        identity
+        (rule translate [(- curves) 0])
+        identity
+        (rule translate [0 (- hor-curves)])
+        identity
+        (rule translate [curves 0])]
+       (open-path
+        (pt right (- up (* depth counter-height)))
+        (acpt (rad 90) 0 0.5)
+        (pt (- right (* counter-width 0.45)) up)
+        (acpt 0 (rad 90) 0.55)
+        (pt left (- up (* counter-height 0.5)))
+        (acpt (rad 90) 0 0.55)
+        (pt (- right (* counter-width 0.45)) bottom)
+        (acpt 0 (rad 90) 0.5)
+        (pt (+ right (* counter-width 0.02)) (+ bottom (* depth counter-height))))))))
+     
+
+(defn letter-e [curves hor-curves base x-height depth]
+  (fn [counter-width]
+    (let [depth (* depth 0.6)
+          counter-height (- (overshooted x-height) (overshoot base) (* 2 hor-curves))
+          left curves
+          right (+ curves counter-width)
+          bottom (+ hor-curves (overshoot base))
+          up (- (overshooted x-height) hor-curves)]
+      (use-ctpunch
+       [(rule translate [curves 0])
+        identity
+        (rule translate [0  hor-curves])
+        identity
+        (rule translate [(- curves) 0])
+        identity
+        (rule translate [0 (- hor-curves)])
+        identity
+        (rule translate [curves 0])]
+       (open-path
+        (pt right (- up (* depth counter-height 1.2)))
+        (acpt (rad 90) 0 0.5)
+        (pt (- right (* counter-width 0.45)) up)
+        (acpt 0 (rad 90) 0.55)
+        (pt left (- up (* counter-height 0.5)))
+        (acpt (rad 90) 0 0.55)
+        (pt (- right (* counter-width 0.45)) bottom)
+        (acpt 0 (rad 90) 0.5)
+        (pt (+ right (* counter-width 0.02)) (+ bottom (* depth counter-height))))))))
+     
       
 (defn letter-o [curves hor-curves counter-width base xh]
   (let [bottom-left (on-overshoot base 0)
         top-right (on-overshoot xh (+ curves counter-width curves))]
-    (tense 
      (group (ccw (ellipse bottom-left top-right)) 
             (cw (ellipse (vec+ bottom-left [curves hor-curves])
-                         (vec- top-right [curves hor-curves]))))
-     1.06)))
+                         (vec- top-right [curves hor-curves]))))))
                  
 
 (deffoundry sans
@@ -116,46 +175,77 @@
    curves (* stems 1.03)
    hor (* stems 0.85 (- 1 contrast))
    hor-curves (* hor 1.03)
-   n-counter-width (- (* xh 0.70 width) (* 2 0.56 stems))
+   n-counter-width (- (* xh 0.70 width) (* 2 0.6 stems))
    line-space (spacing-lines n-counter-width weight)
    curve-space (spacing-curves n-counter-width weight)
    lc-stem (fn [start end] (stem stems start end))
    n-bowl (make-n-bowl stems hor-curves x-height depth)
    a-shoulder (make-a-shoulder stems hor-curves x-height (* depth 0.8))
    b-bowl (make-b-bowl stems curves hor-curves baseline x-height)
-   a-bowl (make-a-bowl stems curves hor-curves baseline)]
+   a-bowl (make-a-bowl stems baseline)
+   c (letter-c curves hor-curves baseline x-height depth)
+   elc (letter-e curves hor-curves baseline x-height depth)]
    
   [(glyph :a
-          [counter-width (* n-counter-width 0.8)
-           black-width (+ stems counter-width stems)]
+          [counter-width (* n-counter-width 0.9)
+           bowl-curves (* curves 0.97)
+           bowl-hor-curves (* hor-curves (Math/pow 0.84 weight))
+           bowl-counter-height (* 0.6 (- xh (* 2 bowl-hor-curves) hor-curves))
+           bowl-counter-width (* counter-width 1.102)
+           black-width (+ bowl-curves bowl-counter-width stems)]
           [(+ curve-space black-width line-space) 0]
-          (place (a-shoulder counter-width) (+ curve-space stems))
-          (place (a-bowl (* counter-width 1.04) (* 0.5 (- xh (* 3 hor-curves))))
-                 (+ curve-space black-width (- stems))))
+          (tense
+           (group
+            (place (a-shoulder counter-width)
+                   (+ curve-space (- bowl-counter-width counter-width) bowl-curves))
+            (place (a-bowl bowl-counter-width bowl-counter-height bowl-curves bowl-hor-curves)
+                   (+ curve-space black-width (- stems))))
+           1.12))
    
    (glyph :b
           [counter-width (* n-counter-width 1.06)
            black-width (+ stems counter-width curves)]
           [(+ line-space black-width curve-space) 0]
-          (place (lc-stem baseline ascender) line-space)
-          (place (b-bowl counter-width) (+ line-space stems)))
+          (tense
+           (group
+            (place (lc-stem baseline ascender) line-space)
+            (place (b-bowl counter-width) (+ line-space stems)))
+           1.12))
 
+   (glyph :c
+          [counter-width (* n-counter-width 1)
+           black-width (+ curves counter-width curves)]
+          [(+ curve-space black-width curve-space) 0]
+          (tense (place (c counter-width) curve-space) 1.12))
+
+   (glyph :e
+          [counter-width (* n-counter-width 1)
+           black-width (+ curves counter-width curves)]
+          [(+ curve-space black-width curve-space) 0]
+          (tense (place (elc counter-width) curve-space) 1.12))
+          
    (glyph :d
           [counter-width (* n-counter-width 1.06)
            black-width (+ curves counter-width stems)
            rot-center [(/ counter-width 2.0) (/ xh 2)]]
           [(+ curve-space black-width line-space) 0]
-           (place (lc-stem baseline ascender) (+ curve-space curves counter-width))
-           (place (from rot-center
-                        rotate (b-bowl counter-width) (rad 180))
-                  (+ curve-space curves)))
+          (tense
+           (group
+            (place (lc-stem baseline ascender) (+ curve-space curves counter-width))
+            (place (from rot-center
+                         rotate (b-bowl counter-width) (rad 180))
+                   (+ curve-space curves)))
+           1.12))
 
    (glyph :h
           [counter-width n-counter-width
            black-width (+ (* stems 2) counter-width)]
           [(+ line-space black-width line-space) 0]
-          (place (lc-stem baseline ascender) line-space)
-          (place (n-bowl counter-width) (+ line-space stems)))
+          (tense
+           (group
+            (place (lc-stem baseline ascender) line-space)
+            (place (n-bowl counter-width) (+ line-space stems)))
+           1.12))
    
    (glyph :i
           []
@@ -172,30 +262,38 @@
            black-width (+ (* stems 3) (* 2 counter-width))]
           [(+ line-space black-width line-space) 0]
           (place (lc-stem baseline x-height) line-space)
-          (place (n-bowl counter-width) (+ line-space stems))
-          (place (n-bowl counter-width) (+ line-space (* 2 stems) counter-width)))
+          (tense
+           (group
+            (place (n-bowl counter-width) (+ line-space stems))
+            (place (n-bowl counter-width) (+ line-space (* 2 stems) counter-width)))
+           1.12))
    
    (glyph :n
           [counter-width n-counter-width
            black-width (+ (* stems 2) counter-width)]
           [(+ line-space black-width line-space) 0]
           (place (lc-stem baseline x-height) line-space)
-          (place (n-bowl counter-width) (+ line-space stems)))
+          (tense (place (n-bowl counter-width) (+ line-space stems)) 1.12))
 
    (glyph :o                   ;; glyphs
           [counter-width (* n-counter-width 1.12)
            black-width (+ (* curves 2) counter-width)]
           [(+ curve-space black-width curve-space) 0]
-          (place
-           (letter-o curves hor-curves counter-width baseline x-height)
-           curve-space))
+          (tense
+           (place
+            (letter-o curves hor-curves counter-width baseline x-height)
+            curve-space)
+           1.12))
 
    (glyph :p
           [counter-width (* n-counter-width 1.06)
            black-width (+ stems counter-width curves)]
           [(+ line-space black-width curve-space) 0]
           (place (lc-stem descender x-height) line-space)
-          (place (b-bowl counter-width) (+ line-space stems)))
+          (tense
+           (place (b-bowl counter-width) (+ line-space stems))
+           1.12))
+          
 
    (glyph :q
           [counter-width (* n-counter-width 1.06)
@@ -203,19 +301,23 @@
            rot-center [(/ counter-width 2.0) (/ xh 2)]]
           [(+ curve-space black-width line-space) 0]
            (place (lc-stem descender x-height) (+ curve-space curves counter-width))
-           (place (from rot-center
-                        rotate (b-bowl counter-width) (rad 180))
-                  (+ curve-space curves)))
+           (tense
+            (place (from rot-center
+                         rotate (b-bowl counter-width) (rad 180))
+                   (+ curve-space curves))
+            1.12))
 
    (glyph :u
           [counter-width (* 0.95 n-counter-width)
            black-width (+ (* stems 2) counter-width)
            middle [(+ line-space (/ black-width 2.0)) (/ xh 2.0)]]
           [(+ line-space black-width line-space) 0]
+          (tense
            (from middle
                  rotate
                  (group
                   (place (lc-stem baseline x-height) line-space)
                   (place (n-bowl counter-width) (+ line-space stems)))
-                 (rad 180)))])
+                 (rad 180))
+           1.12))])
           
