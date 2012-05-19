@@ -21,14 +21,14 @@
 (defn make-n-bowl [thickness hor-curves x-height depth]
   (fn [counter-width]
     (let [counter-height (- (overshooted x-height) hor-curves)
-          top-depth (* counter-width depth)
-          i (- thickness (* thickness (- 1 (/ 1 (+ 1.9 (/ thickness counter-width))))))]
+          top-depth (* counter-height depth)
+          i (- thickness (* thickness (- 1 (/ 1 (+ 3 (/ thickness counter-width))))))]
       (use-ctpunch
        [(rule translate [(- i) (* hor-curves 0.3)])
         (rule translate [(- i) hor-curves])
         (rule translate [(* (- thickness i) 0.52) hor-curves])
         (rule translate [thickness hor-curves])
-        (rule translate [thickness (* hor-curves 0.3)])
+        (rule translate [thickness (* hor-curves 0.2)])
         (rule translate [thickness 0])]
        (open-path
         (pt 0 (- counter-height top-depth))
@@ -41,11 +41,11 @@
 (defn make-a-shoulder [thickness hor-curves x-height depth]
   (fn [counter-width]
     (let [counter-height (- (overshooted x-height) hor-curves)
-          top-depth (* counter-width depth)]
+          top-depth (* counter-height depth)]
       (use-ctpunch
-       [(rule translate [(* -0.5 (+ thickness hor-curves)) 0])
-        (rule translate [(- thickness) hor-curves])
-        (rule translate [(* (- thickness hor-curves) 0.5) hor-curves])
+       [(rule translate [(- thickness) 0])
+        identity
+        (rule translate [0 hor-curves])
         (rule translate [thickness hor-curves])
         (rule translate [thickness 0])
         (rule translate [thickness 0])]
@@ -59,7 +59,7 @@
 
 (defn make-a-bowl [thickness baseline]
   (fn [counter-width counter-height curves hor-curves]
-    (let [i (- thickness (* thickness (- 1 (/ 1 (+ 1 (/ thickness counter-width))))))]
+    (let [i (- thickness (* thickness (- 1 (/ 1 (+ 2 (/ thickness counter-width))))))]
       (use-ctpunch
        [(rule translate [i hor-curves])
         (rule translate [0 hor-curves])
@@ -83,7 +83,7 @@
 (defn make-b-bowl [thickness curves hor-curves base x-height]
   (fn [counter-width]
     (let [counter-height (- (overshooted x-height) (overshoot base) (* 2 hor-curves))
-          i (- thickness (* thickness (- 0.85 (/ 1 (+ 1.9 (/ thickness counter-width))))))
+          i (- thickness (* thickness (- 0.85 (/ 1 (+ 4 (/ thickness counter-width))))))
           bottom-left [0 (+ (overshooted base) hor-curves)]
           top-right [counter-width (- (overshooted x-height) hor-curves)]]
        (group
@@ -93,7 +93,7 @@
 
 (defn letter-c [curves hor-curves base x-height depth]
   (fn [counter-width]
-    (let [depth (* depth 0.6)
+    (let [
           counter-height (- (overshooted x-height) (overshoot base) (* 2 hor-curves))
           left curves
           right (+ curves counter-width)
@@ -110,7 +110,7 @@
         identity
         (rule translate [curves 0])]
        (open-path
-        (pt right (- up (* depth counter-height)))
+        (pt right (- up (* depth (+ hor-curves counter-width))))
         (acpt (rad 90) 0 0.5)
         (pt (- right (* counter-width 0.45)) up)
         (acpt 0 (rad 90) 0.55)
@@ -118,7 +118,7 @@
         (acpt (rad 90) 0 0.55)
         (pt (- right (* counter-width 0.45)) bottom)
         (acpt 0 (rad 90) 0.5)
-        (pt (+ right (* counter-width 0.02)) (+ bottom (* depth counter-height))))))))
+        (pt (+ right (* counter-width 0.02)) (+ bottom (* depth (+ hor-curves counter-width)))))))))
      
 
 (defn letter-e [curves hor-curves base x-height depth]
@@ -162,8 +162,7 @@
 (deffoundry sans
   [weight   1.0                ;; parameters
    width    1.0
-   contrast 0.0
-   depth    0.5]
+   contrast 0.0]
   []                           ;; options
   [descender  [-240 -10]       ;; alignments [position overshooting]
    baseline   [0    -10]
@@ -176,14 +175,18 @@
    hor (* stems 0.85 (- 1 contrast))
    hor-curves (* hor 1.03)
    n-counter-width (- (* xh 0.70 width) (* 2 0.6 stems))
+   depth (/ (/ (* (/ (overshooted x-height) 3.5 0.7) (/ n-counter-width (- (overshooted x-height) hor-curves)))
+               (- (overshooted x-height) hor-curves))
+            (if (< width 1) (Math/pow width 1.4) width))
+                                        ;(* 0.25 (/ xh 0.7) (/ n-counter-width (- xh hor-curves)))
    line-space (spacing-lines n-counter-width weight)
    curve-space (spacing-curves n-counter-width weight)
    lc-stem (fn [start end] (stem stems start end))
-   n-bowl (make-n-bowl stems hor-curves x-height depth)
-   a-shoulder (make-a-shoulder stems hor-curves x-height (* depth 0.8))
+   n-bowl (make-n-bowl stems (* hor-curves 1.07) x-height depth)
+   a-shoulder (make-a-shoulder (* stems 0.95) (* hor-curves 0.8) x-height  (* depth 0.7))
    b-bowl (make-b-bowl stems curves hor-curves baseline x-height)
    a-bowl (make-a-bowl stems baseline)
-   c (letter-c curves hor-curves baseline x-height depth)
+   c (letter-c curves hor-curves baseline x-height (* 1.2 depth))
    elc (letter-e curves hor-curves baseline x-height depth)]
    
   [(glyph :a
@@ -276,7 +279,7 @@
           (tense (place (n-bowl counter-width) (+ line-space stems)) 1.12))
 
    (glyph :o                   ;; glyphs
-          [counter-width (* n-counter-width 1.12)
+          [counter-width (* n-counter-width 1.17)
            black-width (+ (* curves 2) counter-width)]
           [(+ curve-space black-width curve-space) 0]
           (tense
