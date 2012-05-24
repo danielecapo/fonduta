@@ -3,6 +3,13 @@
         fonduta.utils)
    (:require [fonduta.basefont :as base]))
 
+(defn exp-inv [a x]
+  (/ 1 (Math/pow a x)))
+
+(defn bound-to-max [a m speed]
+  (fn [x]
+    (* m (- 1 (exp-inv a (* x speed))))))
+
 (defn comp-rule [rule & rules]
   (fn [x] (reduce (fn [p r] (r p)) x (cons rule rules))))
 
@@ -22,9 +29,10 @@
   (fn [counter-width]
     (let [counter-height (- (overshooted x-height) hor-curves)
           top-depth (* counter-height depth)
-          i  (* (- 1 contrast) (- thickness (* thickness (- 1 (/ 1 (+ 2.5 (/ thickness counter-width)))))))]
+          i (- thickness (* 0.95 ((bound-to-max 4 thickness 2)  (/ thickness counter-width))))]
+          ;;(* (- 1 contrast) (- thickness (* thickness (- 1 (/ 1 (+ 2.5 (/ thickness counter-width)))))))]
       (use-ctpunch
-       [(rule translate [(- i) (* hor-curves 0.3)])
+       [(rule translate [(- i) (* hor-curves 0.1)])
         (rule translate [(- i) hor-curves])
         (rule translate [(* (- thickness i) 0.52) hor-curves])
         (rule translate [thickness hor-curves])
@@ -59,7 +67,9 @@
 
 (defn make-a-bowl [thickness baseline contrast]
   (fn [counter-width counter-height curves hor-curves]
-    (let [i  (* (- 1 contrast) (- thickness (* thickness (- 1 (/ 1 (+ 1.8 (/ thickness counter-width)))))))]
+    (let [i (- thickness (* 0.9 ((bound-to-max 6 thickness 2)  (/ thickness counter-width))))]
+
+          ;;i  (* (- 1 contrast) (- thickness (* thickness (- 1 (/ 1 (+ 1.8 (/ thickness counter-width)))))))]
       (use-ctpunch
        [(rule translate [i hor-curves])
         (rule translate [0 hor-curves])
@@ -67,8 +77,8 @@
         (rule translate [(- curves) (* hor-curves -0)])
         identity
         (rule translate [(* (- i thickness) 0.55) (- hor-curves)])
-        (rule tense 1.03)
-        (rule translate [i hor-curves])]
+        (rule tense 1.0)
+        (rule translate [i 0])]
        (closed-path (pt 0 (+ hor-curves counter-height (overshoot baseline)))
                     (pt (* counter-width -0.4) (+ hor-curves counter-height (overshoot baseline)))
                     (acpt 0 (rad 90) 0.57)
@@ -172,13 +182,18 @@
   [xh (alignment x-height)     ;; variables
    stems (* xh 0.15 weight)
    curves (* stems 1.03)
-   hor (* stems 0.85 (- 1 contrast))
+   hor (* ((bound-to-max Math/E (* xh 0.37) 0.4) weight)
+          (- 1 contrast))
+   ;;(* stems 0.85 (- 1 contrast))
    hor-curves (* hor 1.03)
    n-counter-width (- (* xh 0.70 width) (* 2 0.6 stems))
-   depth (* (/ (/ (* (/ (overshooted x-height) 3.5 0.7) (/ n-counter-width (- (overshooted x-height) hor-curves)))
-                  (- (overshooted x-height) hor-curves))
-               (if (< width 1) (Math/pow width 1.3) width))
-            (+ contrast 1))
+   depth (* (/ (- (* xh 0.37) hor)  (- (overshooted x-height) hor-curves))
+            (if (<= width 1) width (+ 1 (* (- width 1) 0.4))))
+
+   ;; (* (/ (/ (* (/ (overshooted x-height) 3.5 0.7) (/ n-counter-width (- (overshooted x-height) hor-curves)))
+   ;;                (- (overshooted x-height) hor-curves))
+   ;;             (if (< width 1) (Math/pow width 1.3) width))
+   ;;          (+ contrast 1))
                                         ;(* 0.25 (/ xh 0.7) (/ n-counter-width (- xh hor-curves)))
    aperture 0.28
    line-space (spacing-lines n-counter-width weight)
@@ -194,7 +209,7 @@
           [counter-width (* n-counter-width 0.9)
            stems (* stems 0.97)
            curves (* curves 0.97)
-           depth (* depth 0.8)
+           depth (/ depth 1.1  (if (<= width 1) width (+ 1 (* (- width 1) 0.4))))
            hor-curves (* hor-curves 0.8);(Math/pow 0.84 weight))
            bowl-counter-height (* 0.6 (- xh (* 2 hor-curves) hor-curves))
            bowl-counter-width (* counter-width 1.102)
@@ -325,5 +340,16 @@
                   (place (lc-stem baseline x-height) line-space)
                   (place (n-bowl counter-width) (+ line-space stems)))
                  (rad 180))
-           round))])
+           round))
+    (glyph :v
+           [counter-width (* n-counter-width 1.1)
+            diag-width (* stems 1.1)
+            black-width (+ (* diag-width 2) counter-width)
+            diag (ccw (closed-path (pt (on-alignment x-height 0))
+                                   (pt (on-alignment x-height diag-width))
+                                   (pt (on-alignment baseline (/ (+ black-width diag-width) 2)))
+                                   (pt (on-alignment baseline (/ (- black-width diag-width) 2)))))]
+           [black-width 0]
+           diag
+           (ccw (from [(/ black-width 2) 0] scale diag  -1 1)))])
           
