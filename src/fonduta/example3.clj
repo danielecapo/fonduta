@@ -1,7 +1,8 @@
 (ns fonduta.example3
    (:use fonduta.font
-        fonduta.utils)
-   (:require [fonduta.basefont :as base]))
+         fonduta.utils)
+   (:require [fonduta.basefont :as base]
+             [fonduta.views :as views]))
 
 (defn exp-inv [a x]
   (/ 1 (Math/pow a x)))
