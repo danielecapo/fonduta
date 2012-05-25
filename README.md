@@ -18,11 +18,12 @@ The description of fonts (in fonduta.basefont) is really simple (maybe it is pos
 
 (this draws a circle in 'o')
 
-One word about outlines: they are cubic bezier curves, the first point is always 'on curve', then there are two control point ('off curve') and the next 'on curve' point, and so on. We can decide if a point is a control point by looking at its position, in this way we can represent all the points as couples. If the first point is equal to the last one, the outline is closed.
+Something about outlines: they are cubic bezier splines, the first point is always 'on curve', then there are two control point ('off curve') and the next 'on curve' point, and so on. We can decide if a point is a control point by looking at its position, in this way we can represent all the points as couples. If the first point is equal to the last one, the outline is closed.
 
 However, there's a second 'level' (fonduta.font) where I have described macros to generate these fonts.
 Here the curves are represented in a different way: between two points we can place a control point with a tension parameter, the 'actual' control points of the resulting bezier spline are found interpolating between 'on curve' points and the control point.
 If a point is directly followed by another point, then we have a line.
+Another kind of control point is provided: angle control point. The values before tension are read as the tangents of the curve on the first and second 'on curve' points.
 
 Using the font macro in fonduta.font is simple, the code in the example 'translates' into the code above.
 
@@ -145,6 +146,15 @@ To save you can use the the functions defined in fonduta.basefont, ->sfd and ->u
 [Robofab(http://robofab.org/)] introduced the idea of [glyph math(http://robofab.org/howto/glyphmath.html)], in fonduta I've extended the same kind of operations to fonts.
 The functions are in fonduta.basefont (font+, font-, font*, font-neg). They are useful to implement interpolations.
 
+
+##Counterpunches
+In fonduta.font there's a function named use-ctpunch that implement the idea of counterpunches. A counterpunch is a path (that define the 'white' inside a letter), to 'use' it you need a list of 'rules' that map the points of the counterpunch to the points of the exterior path.
+
+(use-ctpunch [(rule translate [-10 -10])	
+	      (rule translate [10 -10])
+	      (rule translate [10 10])
+	      (rule translate [-10 10])]
+	     (closed-path (pt 0 0) (pt 100 0) (pt 100 100) (pt 0 100)))
 
 
 
