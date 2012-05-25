@@ -146,6 +146,27 @@
            (map (fn [[k v]] [k (* v fy)]) (:alignments f))
            (map (fn [g] (glyph* g fx fy)) (glyphs f)))))
 
+(defn font-neg [f]
+  (font* f -1))
+
 (defn interpolation [f1 f2 x & [y]]
   (let [y (if (nil? y) x y)]
     (font+ f1 (font* (font- f2 f1) x y))))
+
+
+;;;; skew functions
+;;;; useful for obliques
+
+(defn glyph-skew-x [g angle]
+  (apply glyph
+         (:name g)
+         (:advance g)
+         (map (fn [o1]
+                (map (fn [p] (vec-skew-x p angle)) o1))
+              (:outlines g))))
+
+(defn font-skew-x [f angle]
+  (apply font
+         (:name f)
+         (:alignments f)
+         (map (fn [g] (glyph-skew-x g angle)) (glyphs f))))
