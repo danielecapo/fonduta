@@ -248,8 +248,8 @@
 
 
 (deftransform translate [p v]
-  (:point (apply pt (vec+ (coords p) v)))
-  (:control (apply cpt (conj (vec+ (coords p) v) (tension p))))
+  (:point (pt (vec+ (coords p) v)))
+  (:control (cpt (vec+ (coords p) v) (tension p)))
   (:angle-control p)
   (:subpath (apply subpath (map-points (fn [o] (translate o v)) p)))
   (:path (apply path (path-type p) (map-points (fn [o] (translate o v)) p)))
@@ -262,8 +262,8 @@
   (translate (apply f (translate p (vec-neg v)) params) v)) 
 
 (deftransform scale [p f & fy]
-  (:point (apply pt (apply vec-scale (coords p) f fy)))
-  (:control (apply cpt (conj (apply vec-scale (coords p) f fy) (tension p))))
+  (:point (pt (apply vec-scale (coords p) f fy)))
+  (:control (cpt (apply vec-scale (coords p) f fy) (tension p)))
   (:angle-control (let [fxy (if (nil? (first fy))
                               1 (/ f (first fy)))]
                     (acpt (Math/atan (/ (Math/tan (p 1)) fxy))
@@ -275,8 +275,8 @@
   (:group (apply group (map-content (fn [o] (apply scale o f fy)) p))))
 
 (deftransform rotate [p angle]
-  (:point (apply pt (vec-rotate (coords p) angle)))
-  (:control (apply cpt (conj (vec-rotate (coords p) angle) (tension p))))
+  (:point (pt (vec-rotate (coords p) angle)))
+  (:control (cpt (vec-rotate (coords p) angle) (tension p)))
   (:angle-control (acpt (+ (p 1) angle) (+ (p 2) angle) (tension p)))
   (:subpath (apply subpath (map-points (fn [o] (rotate o angle)) p)))
   (:path (apply path (path-type p) (map-points (fn [o] (rotate o angle)) p)))
@@ -288,8 +288,8 @@
                    (Math/tan angle)))))
 
 (deftransform skew-x [p angle]
-  (:point (translate p [(* -1 (Math/tan angle) (y p)) 0]))
-  (:control (translate p [(* -1 (Math/tan angle) (y p)) 0]))
+  (:point (pt (vec-skew-x (coords p) angle)))
+  (:control (cpt (vec-skew-x (coords p) angle) (tension p)))
   (:angle-control (acpt (skew-x-angle (prevang p) angle)
                         (skew-x-angle (nextang p) angle)
                         (tension p)))

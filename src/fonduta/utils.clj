@@ -26,3 +26,6 @@
 
 (defn vec-x [[x y]] x)
 (defn vec-y [[x y]] y)
+
+(defn vec-skew-x [[x y] angle]
+  (vec+ [x y] [(* -1 (Math/tan angle) y) 0]))
