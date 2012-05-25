@@ -2,7 +2,8 @@
   (:require [clojure.string :as string]
             [clojure.set :as set]
             [fonduta.sfd :as sfd])
-  (:use fonduta.utils))
+  (:use fonduta.utils
+        fonduta.glyphlist))
 
 ;(defn get-glyph [glyph-name font]
 ;  (get (:glyphs font) glyph-name))
@@ -55,7 +56,7 @@
 ;;; with their code
 
 (defn- sfd-encoding [g]
-  (let [e (int (first (name (get g :name))))]
+  (let [e ((:name g) adobe-glyph-list)]
     [e e 0]))
 
 (defn- sfd-cmd [pts]
