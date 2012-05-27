@@ -2,169 +2,32 @@
   (:require [fonduta.basefont :as base])
   (:use fonduta.utils))
 
-;;;; basic definitions of points, paths, subpaths and groups
-
-(defn pt
-  ([x y] [:point x y])
-  ([[x y]] [:point x y]))
-
-(defn cpt
-  ([x y t] [:control x y t])
-  ([[x y] t] [:control x y t]))
-
-(defn acpt
-  ([a1 a2 t] [:angle-control a1 a2 t])
-  ([[a1 a2] t] [:angle-control a1 a2 t]))
-
-(defn path [t & pts]
-  `[:path ~t ~@pts])
-
-(defn subpath [& pts]
-  `[:subpath ~@pts])
-
-(defn closed-path [& pts]
-  (apply path :closed pts))
-
-(defn open-path [& pts]
-  (apply path :open pts))
 
 (defn group [& paths]
-  (vec (cons :group paths)))
-
-;; predicates
-
-(defn control? [p]
-  (= (first p) :control))
-
-(defn angle-control? [p]
-  (= (first p) :angle-control))
-
-(defn point? [p]
-  (= (first p) :point))
-
-(defn path? [p]
-  (= (first p) :path))
-
-(defn subpath? [p]
-  (= (first p) :subpath))
+  {:type :group :paths paths})
 
 (defn group? [p]
-  (= (first p) :group))
-
-;; accessors
-
-(defn path-type [p]
-  (p 1))
-
-(defn closed? [p]
-  (and (path? p) (= (path-type p) :closed)))
-
-(defn x [p]
-  (p 1))
-
-(defn y [p]
-  (p 2))
-
-(defn tension [p]
-  (p 3))
-
-(defn prevang [p]
-  (p 1))
-
-(defn nextang [p]
-  (p 2))
-
-(defn coords [point]
-  [(x point) (y point)])
-
-(defn points [p]
-  (subvec p (if (subpath? p) 1 2)))
-
-(defn path-count [p]
-  (count (points p)))
-
-(defn content [g]
-  (rest g))
+  (= (:type p) :group))
 
 (defn group-count [g]
-  (count (content g)))
-
-(defn path-elt [p i]
-  ((points p) i))
+  (count (:paths g)))
 
 (defn group-elt [g i]
-  (get g (+ i 1)))
+  ((:paths g) i))
 
-;; 'change'
-
-(defn set-x [p v]
-  (assoc p 1 v))
-
-(defn set-y [p v]
-  (assoc p 2 v))
-
-(defn set-tension [p t]
-  (assoc p 3 t))
-
-(defn set-prevang [p v]
-  (assoc p 1 v))
-
-(defn set-nextang [p v]
-  (assoc p 2 v))
-
-(defn add-to [p new]
-  (conj p new))
-
-(defn cut-path
-  ([p start]
-     (apply subpath (subvec (points p) start)))
-  ([p start end]
-     (apply subpath (subvec (points p) start end))))
-
-(defn set-in-path [p i new]
-  (assoc p (+ i (if (subpath? p) 1 2)) new))
-
-(defn mod-in-path [p i f & args]
-  (set-in-path
-   p i (apply f (path-elt p i) args)))
 
 (defn set-in-group [g i n]
-  (assoc g (+ i 1) n))
+  (assoc-in g [:paths i] n))
 
 (defn mod-in-group [g i f & args]
   (set-in-group
    g i (apply f (group-elt g i) args)))
 
-(defn map-points [f & paths]
-  (apply map f (map points paths)))
 
-(defn map-content [f & groups]
-  (apply map f (map content groups)))
+(defn map-paths [f & groups]
+  (apply group (apply map f (map :paths groups))))
 
-(defn close [p]
-  (assoc p 1 :closed))
 
-(defn open [p]
-  (assoc p 1 :open))
-
-(defn flatten-subpaths [p]
-  (letfn [(f [p]
-            (reduce
-             (fn [pts x]
-               (if (subpath? x)
-                 (concat pts (f (points x)))
-                 (concat pts [x])))
-             [] p))]
-    (apply path (path-type p) (f (points p)))))
-
-(defn reverse-subpath [p]
-  (cond (subpath? p) (apply subpath
-                            (reverse (map reverse-subpath (points p))))
-        (angle-control? p) (acpt (p 2) (p 1) (tension p))
-        :else p))
-
-(defn reverse-path [p]
-  (apply path (path-type p) (reverse (map reverse-subpath (points p)))))
 
 ;;;; detecting orientation of paths
 ;;;; to be rewritten for subpaths? (or I can flatten subpaths)
