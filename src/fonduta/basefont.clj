@@ -11,6 +11,32 @@
 (defn points [path]
   (rest path))
 
+(defn transform [f p args]
+  (if (number? (first p)) ;; is a geometrical vector
+    (apply f p args)
+    (into [] (map (fn [p] (transform f p args))
+                  p))))
+
+(defn translate [p v]
+  (transform vec+ p [v]))
+
+(defn rotate [p angle]
+  (transform vec-rotate p [angle]))
+
+(defn scale
+  ([p f]
+     (transform vec-scale p [f]))
+  ([p f fy]
+     (transform vec-scale p [f fy])))
+
+(defn skew-x [p angle]
+  (transform vec-skew-x p [angle]))
+
+(defn from [c f p & args]
+  (translate
+   (apply f (translate p (vec-neg c)) args)
+   c))
+
 ;; (defn vertical-metrics [x-height capitals ascender descender & [others]]
 ;;   (merge {:x-height x-height,
 ;;           :capitals capitals,
