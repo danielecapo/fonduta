@@ -11,12 +11,15 @@
 ;;  1.5 transformations
 ;;  1.6 draw to 'base' format
 ;; 2. from
-;; 3. clockwise and counter-clockwise directions
+;; 3. orientation
 ;; 4. font
 ;; 4.1 glyph
 ;; 4.2 alignments
 ;; 4.3 font macro
-;; 5 foundry
+;; 5. foundry
+;; 6. counterpunches
+
+
 
 ;; 1. groups
 ;; 1.1 definition
@@ -79,7 +82,8 @@
    (apply f (translate p (vec-neg c)) args)
    c))
 
-;; 3. clockwise and counterclockwise directions
+;; 3. orientation
+
 
 ;; for clockwise see:
 ;; http://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order
@@ -103,6 +107,7 @@
   (if (clockwise? p) (reverse-all p) p))
 
 ;; 4. font
+
 ;; 4.1 glyph
 
 (defn- base-outlines [v t]
@@ -156,7 +161,7 @@
                  ~@glyphs))
     ~@(map make-opt opts)))
 
-;; 5 foundry
+;; 5. foundry
 
 ;;;; a foundry wrap a font inside a function
 ;;;; the arguments passed to the foundry are the parameters used by the fonts
@@ -169,3 +174,38 @@
 (defmacro deffoundry [fontname [& params] & body-forms]
   `(defn ~fontname [& ~(parameters-list params)]
      (font ~(keyword (name fontname)) ~@body-forms)))
+
+;; 6. counterpunches
+
+;; In puchcutting 'counterpunches' was used to simplify the work.
+;; The punchcutter can produce a punch for the 'white' inside 'p',
+;; for example, and the use it for other letters like 'b'.
+;; In my abstraction a counterpunch is defined as a collection
+;; of points (used to define the 'white'), every point of the counterpunch
+;; can be mapped to zero or more points in the exterior contour of the letter.
+;; For example if I define an ellipse as the counterpunch of 'o',
+;; the rules can translate these points defininig another ellipse.
+;; This can be expressive since the translation can be defined in terms of
+;; the contrast between horizontal and vertical 'strokes'.
+
+
+
+(defn rule [f & args]
+  (fn [x] (apply f x args)))
+
+(defn- map-rules [rules points]
+  (reduce
+   concat
+   (map (fn [r p]
+          (if (vector? r)
+            (map (fn [r] (r p)) r)
+            (list (r p))))
+        rules points)))
+
+
+(defn use-ctpunch [closed f rules counterpunch]
+  (let [new-points (map-rules rules counterpunch)]
+    (if (= closed :closed)
+      (group (ccw (apply f new-points))
+             (cw (apply f counterpunch)))
+      (ccw (apply f (concat counterpunch (reverse new-points)))))))
