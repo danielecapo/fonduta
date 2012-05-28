@@ -52,7 +52,7 @@
 
 (defn- make-frame []
   (let [fr
-        (frame :title "glyph"
+        (frame :title "fonduta preview"
                :width 1200 :height 200
                :content (border-panel :center (canvas :id :canvas
                                                       :background "#fff"

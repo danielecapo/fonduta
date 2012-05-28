@@ -1,6 +1,7 @@
 (ns fonduta.example3
-   (:use fonduta.font
-         fonduta.utils)
+   (:use fonduta.core
+         fonduta.vectors
+         fonduta.tensionpaths)
    (:require [fonduta.basefont :as base]
              [fonduta.views :as views]))
 
