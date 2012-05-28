@@ -2,8 +2,9 @@
   (:require [clojure.string :as string]
             [clojure.set :as set]
             [fonduta.sfd :as sfd])
-  (:use fonduta.utils
-        fonduta.glyphlist))
+  (:use fonduta.vectors
+        fonduta.glyphlist
+        fonduta.operations))
 
 ;(defn get-glyph [glyph-name font]
 ;  (get (:glyphs font) glyph-name))
@@ -17,25 +18,23 @@
     (into [] (map (fn [p] (transform f p args))
                   p))))
 
-(defn translate [p v]
+(defmethod  translate :outline [p v]
   (transform vec+ p [v]))
 
-(defn rotate [p angle]
+(defmethod  rotate :outline [p angle]
   (transform vec-rotate p [angle]))
 
-(defn scale
+(defmethod scale :outline
   ([p f]
      (transform vec-scale p [f]))
   ([p f fy]
      (transform vec-scale p [f fy])))
 
-(defn skew-x [p angle]
+(defmethod skew-x :outline [p angle]
   (transform vec-skew-x p [angle]))
 
-(defn from [c f p & args]
-  (translate
-   (apply f (translate p (vec-neg c)) args)
-   c))
+(defmethod draw :outline [p]
+  p)
 
 ;; (defn vertical-metrics [x-height capitals ascender descender & [others]]
 ;;   (merge {:x-height x-height,

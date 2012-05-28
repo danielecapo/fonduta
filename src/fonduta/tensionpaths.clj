@@ -1,6 +1,26 @@
-(ns fonduta.tension-paths
-  (:use fonduta.utils
+(ns fonduta.tensionpaths
+  (:require [fonduta.core :as core])
+  (:use fonduta.vectors
         fonduta.operations))
+
+
+;; 1. objects (points, control points, angle-control points, paths)
+;; 2. predicates
+;; 3. accessors
+;; 4. 'change'
+;; 5. transformations
+;;  5.1 translations
+;;  5.2 scaling
+;;  5.3 rotations
+;;  5.4 skew-x
+;;  5.5 tense
+;; 6. drawing to 'base' format
+;; 7. primitives
+
+;; 1. objects
+
+;; objects are represented with maps
+;; the type field is used for dispatching to mutimethods
 
 (defn pt
   ([x y] {:type :point, :x x, :y y})
@@ -23,7 +43,7 @@
 (defn open-path [& pts]
   (apply path :open pts))
 
-;; predicates
+;; 2. predicates
 
 (defn point? [p]
   (= (:type p) :point))
@@ -40,10 +60,13 @@
 (defn closed? [p]
   (= (:closed p) :closed))
 
-;; accessors
+;; 3. accessors
 
 (defn coords [p]
   [(:x p) (:y p)])
+
+(defn angles [c]
+  [(:prevang c) (:nextang c)])
 
 (defn path-type [p]
   (:closed p))
@@ -54,7 +77,9 @@
 (defn path-elt [p i]
   ((:points p) i))
 
-;; 'change'
+;; 4. 'change'
+
+;; The functions in this section return new objects
 
 (defn set-x [p v]
   (assoc p :x v))
@@ -74,6 +99,12 @@
 (defn add-to-path [p & pts]
   (assoc p :points (concat (:points p) pts)))
 
+(defn set-points [p & pts]
+  (assoc p :points pts))
+
+;; To cut a path we must be sure that the resulting (open) path
+;; starts and ends with a point (not a control point)
+
 (defn cut-path
   ([p start]
      (apply open-path
@@ -84,6 +115,11 @@
                     (if (not (point? (p start))) (+ start 1) start)
                     (if (not (point? (p (- end 1)))) (- end 1) end)))))
 
+(defn join-paths [p & paths]
+  (apply open-path
+         (reduce concat
+                 (map :points (conj paths p)))))
+
 (defn set-in-path [p i new]
   (assoc-in p [:points i] new))
 
@@ -91,9 +127,11 @@
   (set-in-path
    p i (apply f (path-elt p i) args)))
 
+
+;; map-points map over the points list of paths
+
 (defn map-points [f & paths]
-  (assoc (first paths) :points
-         (apply map f (map :points paths))))
+  (apply map f (map :points paths)))
 
 (defn close [p]
   (assoc p :closed :closed))
@@ -117,12 +155,30 @@
 ;;         (angle-control? p) (acpt (p 2) (p 1) (tension p))
 ;;         :else p))
 
-(defn reverse-path [p]
-  (let [pts (reverse (:points p))]
-    (assoc p :points (if (not (point? (first pts)))
-                       (concat (rest pts) [(first pts)])
-                       pts))))
+;; In order to reverse a path we must reverse the order of angles
+;; in every angle-control point. Then, if the first point in the resulting
+;; points list isn't a point, we must place it a the end.
 
+(defn reverse-angle-control [c]
+  (acpt (:nextang c) (:prevang c) (:tension c)))
+
+(defn reverse-path [p]
+  (let [pts (reverse (map (fn [p]
+                            (if (angle-control? p)
+                              (reverse-angle-control p)
+                              p))
+                          (:points p)))]
+    (apply set-points p
+           (if (not (point? (first pts)))
+             (concat (rest pts) [(first pts)])
+             pts))))
+
+(defmethod reverse-all :path [p]
+  (reverse-path p))
+
+;; 5. transformations
+
+;; 5.1 translation
 
 (defmethod translate :point [p v]
   (pt (vec+ (coords p) v)))
@@ -134,8 +190,9 @@
   c)
 
 (defmethod translate :path [p v]
-  (map-points (fn [p] (translate p v)) p))
+  (apply set-points p (map-points (fn [p] (translate p v)) p)))
 
+;; 5.2 scaling
 
 (defmethod scale :point
   ([p f] (pt (vec-scale (coords p) f)))
@@ -147,13 +204,15 @@
 
 (defmethod scale :angle-control [c f & [fy]]
   (let [fxy (if (nil? fy) 1 (/ f fy))]
-    (acpt (Math/atan (/ (Math/tan (c 1)) fxy))
-          (Math/atan (/ (Math/tan (c 2)) fxy))
+    (acpt (Math/atan (/ (Math/tan (:prevang c)) fxy))
+          (Math/atan (/ (Math/tan (:nextang c)) fxy))
           (:tension c))))
 
 (defmethod scale :path [p f & fy]
-  (map-points (fn [p] (apply scale p f fy)) p))
+  (apply set-points p (map-points (fn [p] (apply scale p f fy)) p)))
 
+
+;; 5.3 rotations
 
 (defmethod rotate :point [p angle]
   (pt (vec-rotate (coords p) angle)))
@@ -167,7 +226,9 @@
         (:tension c)))
 
 (defmethod rotate :path [p angle]
-  (map-points (fn [p] (rotate p angle)) p))
+  (apply set-points p (map-points (fn [p] (rotate p angle)) p)))
+
+;; 5.4 skew-x
 
 (defn- skew-x-angle [a angle]
   (+ (rad 90)
@@ -187,7 +248,9 @@
         (:tension c)))
 
 (defmethod skew-x :path [p angle]
-  (map-points (fn [p] (skew-x p angle)) p))
+  (apply set-points p (map-points (fn [p] (skew-x p angle)) p)))
+
+;; 5.5 tense
 
 (defmulti tense :type)
 
@@ -201,9 +264,18 @@
   (set-tension c (* (:tension c) f)))
 
 (defmethod tense :path [p f]
-  (map-points (fn [p] (tense p f)) p))
+  (apply set-points p (map-points (fn [p] (tense p f)) p)))
 
+(defmethod tense :group [g f]
+  (apply core/group (core/map-paths (fn [p] (tense p f)) g)))
 
+;; 6. drawing to 'base' format
+
+;; To 'draw' a path we must convert 'tension' control points
+;; to bezier control points. This is done interpolating the position
+;; of the tension control point with the position of a near point.
+;; We must also find the position of control points when we used
+;; angle-control points, using angles to find the intersection.
 
 (defn- approx-equal [a b]
   (< (Math/abs (- a b)) 0.0001))
@@ -232,7 +304,7 @@
         p2 (coords p2)
         ctc (if (control? ct)
               (coords ct)
-              (intersect p1 p2 (coords ct)))]
+              (intersect p1 p2 (angles ct)))]
     [(vec+ p1 (vec-scale (vec- ctc p1) (:tension ct)))
      (vec+ p2 (vec-scale (vec- ctc p2) (:tension ct)))]))
 
@@ -250,12 +322,38 @@
                  (rest (if (closed? p) (cycle pts) pts))
                  (rest (rest (cycle pts)))))))
 
-;; (defn base-outlines [v t]
-;;   (if (nil? t) v
-;;       (if (group? t)
-;;         (concat v (reduce base-outlines [] (content t)))
-;;         (conj v (base-outline t)))))
-
 
 (defmethod draw :path [p]
   (base-outline p))
+
+
+;; 7. primitives
+
+(defn super-ellipse [bottom-left top-right]
+  (let [[xa ya] bottom-left
+        [xb yb] top-right
+        xm (/ (+ xb xa) 2)
+        ym (/ (+ yb ya) 2)]
+    (path :closed
+          (pt xm ya) (cpt xb ya 1)
+          (pt xb ym) (cpt xb yb 1)
+          (pt xm yb) (cpt xa yb 1)
+          (pt xa ym) (cpt xa ya 1))))
+
+(defn ellipse [bottom-left top-right]
+  (tense (super-ellipse bottom-left top-right) 0.55))
+
+(defn rect [bottom-left top-right]
+  (let [[xa ya] bottom-left
+        [xb yb] top-right]
+    (path :closed
+          (pt xa ya) (pt xb ya)
+          (pt xb yb) (pt xa yb))))
+
+(defn circle [center radius]
+  (let [vr [radius radius]]
+    (ellipse (vec- center vr) (vec+ center vr))))
+
+(defn square [center side]
+  (let [vr [(/ side 2) (/ side 2)]]
+    (rect (vec- center vr) (vec+ center vr))))

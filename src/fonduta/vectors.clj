@@ -1,4 +1,5 @@
-(ns fonduta.utils)
+(ns fonduta.vectors
+  (:use fonduta.operations))
 
 (def PI (Math/PI))
 
@@ -29,3 +30,17 @@
 
 (defn vec-skew-x [[x y] angle]
   (vec+ [x y] [(* -1 (Math/tan angle) y) 0]))
+
+
+(defmethod translate :vector [v v1]
+  (vec+ v v1))
+
+(defmethod scale :vector
+  ([v f] (vec-scale v f))
+  ([v f fy] (vec-scale v f fy)))
+
+(defmethod rotate :vector [v angle]
+  (vec-rotate v angle))
+
+(defmethod skew-x :vector [v angle]
+  (vec-skew-x v angle))

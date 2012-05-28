@@ -1,14 +1,20 @@
-(ns fonduta.operations
-  (:use fonduta.utils))
+(ns fonduta.operations)
 
-(defmulti translate :type)
-(defmulti rotate :type)
-(defmulti scale :type)
-(defmulti skew-x :type)
 
-(defn from [c f p & args]
-  (translate
-   (apply f (translate p (vec-neg c)) args)
-   c))
+(defn- dispatch-fn [o & args]
+  (let [t (:type o)]
+    (if (nil? t) ; if there's no :type field
+      (if (and (= (count o) 2)
+               (every? number? o))
+        :vector
+        :outline)
+      (:type o))))
 
-(defmulti draw :type)
+(defmulti translate dispatch-fn)
+(defmulti rotate dispatch-fn)
+(defmulti scale dispatch-fn)
+(defmulti skew-x dispatch-fn)
+(defmulti reverse-all dispatch-fn)
+
+(defmulti draw dispatch-fn)
+
