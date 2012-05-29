@@ -6,6 +6,14 @@
 (defn rad [deg]
   (Math/toRadians deg))
 
+(defn vec-length [[x y]]
+  (Math/sqrt (+ (* x x) (* y y))))
+
+(defn vec-angle [[x y]]
+  (if (= x 0)
+    (if (> y 0) (rad 90) (rad 270))
+    (Math/atan (/ y x))))
+
 (defn vec+ [[xa ya] [xb yb]]
   [(+ xa xb) (+ ya yb)])
 
@@ -31,6 +39,13 @@
 (defn vec-skew-x [[x y] angle]
   (vec+ [x y] [(* -1 (Math/tan angle) y) 0]))
 
+(defn between [v1 v2 f]
+  (vec+ (vec-scale (vec- v2 v1) f)
+        v1))
+
+(defn middle [v1 v2]
+  (vec-scale (vec+ v1 v2) 0.5))
+
 
 (defmethod translate :vector [v v1]
   (vec+ v v1))
@@ -44,3 +59,5 @@
 
 (defmethod skew-x :vector [v angle]
   (vec-skew-x v angle))
+
+(defmethod reverse-all :vector [v] v)

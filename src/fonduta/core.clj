@@ -22,6 +22,7 @@
 
 
 ;; 1. groups
+
 ;; 1.1 definition
 
 (defn group [& paths]
@@ -110,7 +111,7 @@
 
 ;; 4.1 glyph
 
-(defn- base-outlines [v t]
+(defn base-outlines [v t]
   (if (nil? t) v
       (if (group? t)
         (concat v (reduce base-outlines [] (:paths t)))
@@ -208,4 +209,8 @@
     (if (= closed :closed)
       (group (ccw (apply f new-points))
              (cw (apply f counterpunch)))
-      (ccw (apply f (concat counterpunch (reverse new-points)))))))
+      (ccw
+       (apply f
+              (concat
+               counterpunch
+               (reverse (map reverse-all new-points))))))))

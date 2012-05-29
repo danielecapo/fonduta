@@ -6,11 +6,18 @@
         fonduta.glyphlist
         fonduta.operations))
 
-;(defn get-glyph [glyph-name font]
-;  (get (:glyphs font) glyph-name))
+;; 1. transformations
+;; 2. draw
+;; 3. font
+;;  3.1 glyph
+;;  3.2 font
+;; 4. write to sfd format
+;;  4.1 save sfd
+;; 5. font math
+;; 6. font skew
 
-(defn points [path]
-  (rest path))
+
+;; 1. transformations
 
 (defn transform [f p args]
   (if (number? (first p)) ;; is a geometrical vector
@@ -33,8 +40,12 @@
 (defmethod skew-x :outline [p angle]
   (transform vec-skew-x p [angle]))
 
-(defmethod draw :outline [p]
-  p)
+(defmethod reverse-all :outline [p]
+  (reverse p))
+
+;; 2. draw
+
+(defmethod draw :outline [p] p)
 
 ;; (defn vertical-metrics [x-height capitals ascender descender & [others]]
 ;;   (merge {:x-height x-height,
@@ -43,15 +54,23 @@
 ;;           :descender descender}
 ;;          others))
 
+;; 3. font
+
+;; 3.1 glyph
+
 (defn glyph [name advance & outlines]
   {:name name,
    :advance advance,
    :outlines outlines})
 
+;; 3.2 font
+
 (defn font [name alignments & glyphs]
   {:name name,
    :alignments (into {} alignments),
    :glyphs (vec glyphs)})  
+
+;; 3.3 accessors
 
 (defn font-name [f]
   (:name f))
@@ -76,9 +95,8 @@
     (sort g< (glyphs f))))
 
 
-;;; transform to sfd format (fontforge) 
-;;; encoding: this is baaaaaaad, I should load a list of glyph names
-;;; with their code
+;; 4. write to sfd format
+
 
 (defn- sfd-encoding [g]
   (let [e ((:name g) adobe-glyph-list)]
@@ -101,6 +119,10 @@
 (defn- sfd-glyphs [g]
   (map sfd-glyph g))
 
+
+;; The following function returns a minimal sfd (as a string)
+;; with a basica 'header'
+
 (defn build-sfd [f]
   (let [fontname (name (font-name f))]
     `[[:header
@@ -114,16 +136,18 @@
        [:Namelist "Adobe Glyph List"]]
       ~@(sfd-glyphs (glyphs f))]))
 
+;; 4.1 save a sfd file
             
 (defn ->sfd [filename f]
   (spit filename (sfd/font (build-sfd f))))
 
 
+;; 5. font math
 
-;;;; vector operations on fonts
-;;;; implementing font 'math'
-;;;; see robofab.org for the idea of glyph math
-;;;; http://robofab.org/howto/glyphmath.html
+;; vector operations on fonts
+;; implementing font 'math'
+;; see robofab.org for the idea of glyph math
+;; http://robofab.org/howto/glyphmath.html
 
 (defn glyph-op [f g1 g2]
   (apply glyph (:name g1)
@@ -178,9 +202,10 @@
   (let [y (if (nil? y) x y)]
     (font+ f1 (font* (font- f2 f1) x y))))
 
+;; 6. font skew
 
-;;;; skew functions
-;;;; useful for obliques
+;; skew functions
+;; useful for obliques
 
 (defn glyph-skew-x [g angle]
   (apply glyph

@@ -173,6 +173,9 @@
              (concat (rest pts) [(first pts)])
              pts))))
 
+(defmethod reverse-all :point [p] p)
+(defmethod reverse-all :control [c] c)
+(defmethod reverse-all :angle-control [c] (reverse-angle-control c))
 (defmethod reverse-all :path [p]
   (reverse-path p))
 

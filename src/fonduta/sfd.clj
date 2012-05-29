@@ -1,6 +1,7 @@
 (ns fonduta.sfd
   (:require [clojure.string :as string]))
 
+
 (defn- entry [k v]
   (str (name k) ": " v "\n"))
 
