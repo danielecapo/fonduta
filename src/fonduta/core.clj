@@ -4,11 +4,46 @@
             [fonduta.sfd :as sfd])
   (:use fonduta.glyphlist))
 
+
+;; 1. multimethods
+;; 1.1 draw
+;; 2. vectors
+;; 3. fonts
+;; 3.1 transformations
+;; 3.2 draw
+;; 3.3 glyph
+;; 3.4 font
+;; 3.5 accessors
+;; 3.6. write to sfd format
+;; 3.6.1 save sfd
+;; 3.7. font math
+;; 3.8. font skew
+;; 4. groups
+;; 4.1 definition
+;; 4.2 predicate
+;; 4.3 accessors
+;; 4.4 change
+;; 4.5 transformations
+;; 4.6 draw
+;; 5. from
+;; 6. orientation
+;; 7. macros
+;; 7.1 glyph macro
+;; 7.2 alignments
+;; 7.3 font macro
+;; 7.4 foundry
+;; 8. counterpunches
+
+
 (def PI (Math/PI))
 
 (defn rad [deg]
   (Math/toRadians deg))
 
+;; 1. multimethods
+
+;; In this section I've defined multimethods used to perform
+;; common operations on geometrical obejects
 
 (defn- dispatch-fn [o & args]
   (let [t (:type o)]
@@ -25,8 +60,18 @@
 (defmulti skew-x dispatch-fn)
 (defmulti reverse-all dispatch-fn)
 
+;; 1.1 draw
+
+;; Draw is needed as an 'interface' to write different kind of 'paths'
+;; to the basic outlines representation I use. This representation
+;; uses cubic bezier splines where 'on curve' points and 'off curve' points
+;; are defined by their position, so every point is simply a vector [x y].
+;; Thus a basic outline is written like this:
+;; [p1 cp12 cp21 p2 cp23 cp32 p3 ...]
+
 (defmulti draw dispatch-fn)
 
+;; 2. vectors
 
 (defn vec-length [[x y]]
   (Math/sqrt (+ (* x x) (* y y))))
@@ -64,10 +109,8 @@
 (defn between [v1 v2 f]
   (vec+ (vec-scale (vec- v2 v1) f)
         v1))
-
 (defn middle [v1 v2]
   (vec-scale (vec+ v1 v2) 0.5))
-
 
 (defmethod translate :vector [v v1]
   (vec+ v v1))
@@ -85,18 +128,10 @@
 (defmethod reverse-all :vector [v] v)
 
 
-;; 1. transformations
-;; 2. draw
-;; 3. font
-;;  3.1 glyph
-;;  3.2 font
-;; 4. write to sfd format
-;;  4.1 save sfd
-;; 5. font math
-;; 6. font skew
 
+;; 3. fonts
 
-;; 1. transformations
+;; 3.1 transformations
 
 (defn transform [f p args]
   (if (number? (first p)) ;; is a geometrical vector
@@ -122,34 +157,25 @@
 (defmethod reverse-all :outline [p]
   (reverse p))
 
-;; 2. draw
+;; 3.2 draw
 
 (defmethod draw :outline [p] p)
 
-;; (defn vertical-metrics [x-height capitals ascender descender & [others]]
-;;   (merge {:x-height x-height,
-;;           :capitals capitals,
-;;           :ascender ascender,
-;;           :descender descender}
-;;          others))
-
-;; 3. font
-
-;; 3.1 glyph
+;; 3.3 glyph
 
 (defn make-glyph [name advance & outlines]
   {:name name,
    :advance advance,
    :outlines outlines})
 
-;; 3.2 font
+;; 3.4 font
 
 (defn make-font [name alignments & glyphs]
   {:name name,
    :alignments (into {} alignments),
    :glyphs (vec glyphs)})  
 
-;; 3.3 accessors
+;; 3.5 accessors
 
 (defn font-name [f]
   (:name f))
@@ -174,7 +200,7 @@
     (sort g< (glyphs f))))
 
 
-;; 4. write to sfd format
+;; 3.6 write to sfd format
 
 
 (defn- sfd-encoding [g]
@@ -215,13 +241,13 @@
        [:Namelist "Adobe Glyph List"]]
       ~@(sfd-glyphs (glyphs f))]))
 
-;; 4.1 save a sfd file
+;; 3.6.1 save a sfd file
             
 (defn ->sfd [filename f]
   (spit filename (sfd/font (build-sfd f))))
 
 
-;; 5. font math
+;; 3.7 font math
 
 ;; vector operations on fonts
 ;; implementing font 'math'
@@ -281,7 +307,7 @@
   (let [y (if (nil? y) x y)]
     (font+ f1 (font* (font- f2 f1) x y))))
 
-;; 6. font skew
+;; 3.8 font skew
 
 ;; skew functions
 ;; useful for obliques
@@ -300,37 +326,22 @@
          (:alignments f)
          (map (fn [g] (glyph-skew-x g angle)) (glyphs f))))
 
-;; 1. groups
-;;  1.1 definition
-;;  1.2 predicate
-;;  1.3 accessors
-;;  1.4 change
-;;  1.5 transformations
-;;  1.6 draw to 'base' format
-;; 2. from
-;; 3. orientation
-;; 4. font
-;; 4.1 glyph
-;; 4.2 alignments
-;; 4.3 font macro
-;; 5. foundry
-;; 6. counterpunches
 
 
 
-;; 1. groups
+;; 4. groups
 
-;; 1.1 definition
+;; 4.1 definition
 
 (defn group [& paths]
   {:type :group :paths paths})
 
-;; 1.2 predicate
+;; 4.2 predicate
 
 (defn group? [p]
   (= (:type p) :group))
 
-;; 1.3 accessors
+;; 4.3 accessors
 
 (defn group-count [g]
   (count (:paths g)))
@@ -338,7 +349,7 @@
 (defn group-elt [g i]
   ((:paths g) i))
 
-;; 1.4 change
+;; 4.4 change
 
 (defn set-in-group [g i n]
   (assoc-in g [:paths i] n))
@@ -353,7 +364,7 @@
 (defn set-paths [g & paths]
   (assoc g :paths paths))
 
-;; 1.5 transformations
+;; 4.5 transformations
 
 (defn- transform-group [f g args]
   (apply set-paths g (map-paths (fn [p] (apply f p args)) g)))
@@ -373,14 +384,14 @@
 (defmethod draw :group [g]
   (map-paths draw g))
 
-;; 2. from
+;; 5. from
 
 (defn from [c f p & args]
   (translate
    (apply f (translate p (vec-neg c)) args)
    c))
 
-;; 3. orientation
+;; 6. orientation
 
 
 ;; for clockwise see:
@@ -404,9 +415,9 @@
 (defn ccw [p]
   (if (clockwise? p) (reverse-all p) p))
 
-;; 4. font
+;; 7. macros
 
-;; 4.1 glyph
+;; 7.1 glyph macro
 
 (defn base-outlines [v t]
   (if (nil? t) v
@@ -421,7 +432,7 @@
             ~advance
             (reduce base-outlines [] [~@contents]))))
 
-;; 4.2 alignments
+;; 7.2 alignments
 
 (defn- build-alignments [alignments]
   (map (fn [x] (let [n (first x)]
@@ -443,7 +454,7 @@
 (defn on-overshoot [a x]
   [x (+ (alignment a) (overshoot a))])
 
-;; 4.3 font macro
+;; 7.3 font macro
 
 (defn- make-opt [opt]
   (if (= :grid (opt 0))
@@ -459,7 +470,7 @@
                  ~@glyphs))
     ~@(map make-opt opts)))
 
-;; 5. foundry
+;; 7.4 foundry
 
 ;;;; a foundry wrap a font inside a function
 ;;;; the arguments passed to the foundry are the parameters used by the fonts
@@ -473,7 +484,7 @@
   `(defn ~fontname [& ~(parameters-list params)]
      (font ~(keyword (name fontname)) ~@body-forms)))
 
-;; 6. counterpunches
+;; 8. counterpunches
 
 ;; In puchcutting 'counterpunches' was used to simplify the work.
 ;; The punchcutter can produce a punch for the 'white' inside 'p',
