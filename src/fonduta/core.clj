@@ -1,7 +1,304 @@
 (ns fonduta.core
-  (:require [fonduta.basefont :as base])
-  (:use fonduta.vectors
-        fonduta.operations))
+  (:require [clojure.string :as string]
+            [clojure.set :as set]
+            [fonduta.sfd :as sfd])
+  (:use fonduta.glyphlist))
+
+(def PI (Math/PI))
+
+(defn rad [deg]
+  (Math/toRadians deg))
+
+
+(defn- dispatch-fn [o & args]
+  (let [t (:type o)]
+    (if (nil? t) ; if there's no :type field
+      (if (and (= (count o) 2)
+               (every? number? o))
+        :vector
+        :outline)
+      (:type o))))
+
+(defmulti translate dispatch-fn)
+(defmulti rotate dispatch-fn)
+(defmulti scale dispatch-fn)
+(defmulti skew-x dispatch-fn)
+(defmulti reverse-all dispatch-fn)
+
+(defmulti draw dispatch-fn)
+
+
+(defn vec-length [[x y]]
+  (Math/sqrt (+ (* x x) (* y y))))
+
+(defn vec-angle [[x y]]
+  (if (= x 0)
+    (if (> y 0) (rad 90) (rad 270))
+    (Math/atan (/ y x))))
+
+(defn vec+ [[xa ya] [xb yb]]
+  [(+ xa xb) (+ ya yb)])
+
+(defn vec-neg [[xa ya]]
+  [(- xa) (- ya)])
+
+(defn vec- [[xa ya] [xb yb]]
+  [(- xa xb) (- ya yb)])
+
+(defn vec-scale
+  ([[xa ya] f]
+     [(* xa f) (* ya f)])
+  ([[xa ya] fx fy]
+     [(* xa fx) (* ya fy)]))
+
+(defn vec-rotate [[xa ya] angle]
+  [(- (* xa (Math/cos angle)) (* ya (Math/sin angle)))
+   (+ (* xa (Math/sin angle)) (* ya (Math/cos angle)))])
+
+(defn vec-x [[x y]] x)
+(defn vec-y [[x y]] y)
+
+(defn vec-skew-x [[x y] angle]
+  (vec+ [x y] [(* -1 (Math/tan angle) y) 0]))
+
+(defn between [v1 v2 f]
+  (vec+ (vec-scale (vec- v2 v1) f)
+        v1))
+
+(defn middle [v1 v2]
+  (vec-scale (vec+ v1 v2) 0.5))
+
+
+(defmethod translate :vector [v v1]
+  (vec+ v v1))
+
+(defmethod scale :vector
+  ([v f] (vec-scale v f))
+  ([v f fy] (vec-scale v f fy)))
+
+(defmethod rotate :vector [v angle]
+  (vec-rotate v angle))
+
+(defmethod skew-x :vector [v angle]
+  (vec-skew-x v angle))
+
+(defmethod reverse-all :vector [v] v)
+
+
+;; 1. transformations
+;; 2. draw
+;; 3. font
+;;  3.1 glyph
+;;  3.2 font
+;; 4. write to sfd format
+;;  4.1 save sfd
+;; 5. font math
+;; 6. font skew
+
+
+;; 1. transformations
+
+(defn transform [f p args]
+  (if (number? (first p)) ;; is a geometrical vector
+    (apply f p args)
+    (into [] (map (fn [p] (transform f p args))
+                  p))))
+
+(defmethod  translate :outline [p v]
+  (transform vec+ p [v]))
+
+(defmethod  rotate :outline [p angle]
+  (transform vec-rotate p [angle]))
+
+(defmethod scale :outline
+  ([p f]
+     (transform vec-scale p [f]))
+  ([p f fy]
+     (transform vec-scale p [f fy])))
+
+(defmethod skew-x :outline [p angle]
+  (transform vec-skew-x p [angle]))
+
+(defmethod reverse-all :outline [p]
+  (reverse p))
+
+;; 2. draw
+
+(defmethod draw :outline [p] p)
+
+;; (defn vertical-metrics [x-height capitals ascender descender & [others]]
+;;   (merge {:x-height x-height,
+;;           :capitals capitals,
+;;           :ascender ascender,
+;;           :descender descender}
+;;          others))
+
+;; 3. font
+
+;; 3.1 glyph
+
+(defn make-glyph [name advance & outlines]
+  {:name name,
+   :advance advance,
+   :outlines outlines})
+
+;; 3.2 font
+
+(defn make-font [name alignments & glyphs]
+  {:name name,
+   :alignments (into {} alignments),
+   :glyphs (vec glyphs)})  
+
+;; 3.3 accessors
+
+(defn font-name [f]
+  (:name f))
+
+(defn ascender [f]
+  (:ascender (:alignments f)))
+
+(defn descender [f]
+  (:descender (:alignments f)))
+
+(defn glyphs [f]
+  (:glyphs f))
+
+(defn get-glyph [f g]
+  (first
+   (filter (fn [gl] (= (:name gl) g))
+          (glyphs f))))
+
+(defn sorted-glyphs [f]
+  (letfn [(g< [g1 g2]
+            (< (compare (:name g1) (:name g2)) 0))]
+    (sort g< (glyphs f))))
+
+
+;; 4. write to sfd format
+
+
+(defn- sfd-encoding [g]
+  (let [e ((:name g) adobe-glyph-list)]
+    [e e 0]))
+
+(defn- sfd-cmd [pts]
+  (let [[c1 c2 p] (vec pts)]
+    [:c c1 c2 p]))
+
+(defn- sfd-outline [o]
+  `[[:m ~@(first o)]
+    ~@(map sfd-cmd (partition 3 (rest o)))])
+  
+(defn- sfd-glyph [g]
+  `[~(get g :name)
+    ~(sfd-encoding g)
+    ~(get g :advance)
+    ~@(map sfd-outline (get g :outlines))])
+  
+(defn- sfd-glyphs [g]
+  (map sfd-glyph g))
+
+
+;; The following function returns a minimal sfd (as a string)
+;; with a basica 'header'
+
+(defn build-sfd [f]
+  (let [fontname (name (font-name f))]
+    `[[:header
+       [:SplineFontDB 3.0]
+       [:FontName ~fontname]
+       [:FullName ~fontname]
+       [:FamilyName ~fontname]
+       [:Ascent ~(ascender f)]
+       [:Descent ~(- (descender f))]
+       [:Encoding "unicode"]
+       [:Namelist "Adobe Glyph List"]]
+      ~@(sfd-glyphs (glyphs f))]))
+
+;; 4.1 save a sfd file
+            
+(defn ->sfd [filename f]
+  (spit filename (sfd/font (build-sfd f))))
+
+
+;; 5. font math
+
+;; vector operations on fonts
+;; implementing font 'math'
+;; see robofab.org for the idea of glyph math
+;; http://robofab.org/howto/glyphmath.html
+
+(defn glyph-op [f g1 g2]
+  (apply make-glyph (:name g1)
+         (f (:advance g1) (:advance g2))
+         (map (fn [o1 o2] (map f o1 o2)) (:outlines g1) (:outlines g2))))
+
+(defn glyph+ [g1 & gs]
+  (reduce (fn [a b] (glyph-op vec+ a b)) g1 gs))
+
+
+(defn glyph- [g1 & gs]
+  (reduce (fn [a b] (glyph-op vec- a b)) g1 gs))
+
+(defn glyph* [g fx & [fy]]
+  (let [fy (if (nil? fy) fx fy)]
+    (apply make-glyph (:name g)
+           (vec-scale (:advance g) fx fy)
+           (map (fn [o1]
+                  (map (fn [p] (vec-scale p fx fy)) o1))
+                (:outlines g)))))
+
+(defn glyph-neg [g]
+  (glyph* g -1))
+
+(defn alignments-op [f a1 a2]
+  (let [ks (set/intersection (set (keys a1)) (set (keys a2)))]
+    (into {} (map (fn [k] [k (f (get a1 k) (get a2 k))]) ks))))
+
+(defn font-op [f fg f1 f2]
+  (apply make-font
+         (:name f1)
+         (alignments-op f (:alignments f1) (:alignments f2))
+         (map fg (sorted-glyphs f1) (sorted-glyphs f2))))
+
+(defn font+ [f1 & fs]
+  (reduce (fn [a b] (font-op + glyph+ a b)) f1 fs))
+
+(defn font- [f1 & fs]
+  (reduce (fn [a b] (font-op - glyph- a b)) f1 fs))
+
+(defn font* [f fx & [fy]]
+  (let [fy (if (nil? fy) fx fy)]
+    (apply make-font
+           (:name f)
+           (map (fn [[k v]] [k (* v fy)]) (:alignments f))
+           (map (fn [g] (glyph* g fx fy)) (glyphs f)))))
+
+(defn font-neg [f]
+  (font* f -1))
+
+(defn interpolation [f1 f2 x & [y]]
+  (let [y (if (nil? y) x y)]
+    (font+ f1 (font* (font- f2 f1) x y))))
+
+;; 6. font skew
+
+;; skew functions
+;; useful for obliques
+
+(defn glyph-skew-x [g angle]
+  (apply make-glyph
+         (:name g)
+         (:advance g)
+         (map (fn [o1]
+                (map (fn [p] (vec-skew-x p angle)) o1))
+              (:outlines g))))
+
+(defn font-skew-x [f angle]
+  (apply make-font
+         (:name f)
+         (:alignments f)
+         (map (fn [g] (glyph-skew-x g angle)) (glyphs f))))
 
 ;; 1. groups
 ;;  1.1 definition
@@ -119,7 +416,7 @@
 
 (defmacro glyph [name [& locals] advance & contents]
   `(let [~@locals]
-     (apply base/glyph
+     (apply make-glyph
             ~name
             ~advance
             (reduce base-outlines [] [~@contents]))))
@@ -150,13 +447,13 @@
 
 (defn- make-opt [opt]
   (if (= :grid (opt 0))
-    `(base/font* ~@(rest opt))
+    `(font* ~@(rest opt))
     '(identity)))
 
 (defmacro font [name [& opts] alignments variables [& glyphs]]
   `(->
     (let [~@alignments ~@variables]
-      (base/font ~name
+      (make-font ~name
                  [~@(map (fn [x] (assoc x 1 `(alignment ~(get x 1))))
                          (build-alignments alignments))]
                  ~@glyphs))

@@ -1,7 +1,5 @@
 (ns fonduta.tensionpaths
-  (:require [fonduta.core :as core])
-  (:use fonduta.vectors
-        fonduta.operations))
+  (:use fonduta.core))
 
 
 ;; 1. objects (points, control points, angle-control points, paths)
@@ -270,7 +268,7 @@
   (apply set-points p (map-points (fn [p] (tense p f)) p)))
 
 (defmethod tense :group [g f]
-  (apply core/group (core/map-paths (fn [p] (tense p f)) g)))
+  (apply group (map-paths (fn [p] (tense p f)) g)))
 
 ;; 6. drawing to 'base' format
 
