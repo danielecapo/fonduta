@@ -347,12 +347,15 @@
   (count (:paths g)))
 
 (defn group-elt [g i]
-  ((:paths g) i))
+  ((vec (:paths g)) i))
 
 ;; 4.4 change
 
-(defn set-in-group [g i n]
-  (assoc-in g [:paths i] n))
+
+(defn set-in-group [g i new]
+  (assoc g :paths
+         (seq (assoc (vec (:paths g)) i new))))
+
 
 (defn mod-in-group [g i f & args]
   (set-in-group

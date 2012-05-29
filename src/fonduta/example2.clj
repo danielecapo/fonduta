@@ -1,7 +1,7 @@
 (ns fonduta.example2
-   (:use fonduta.font
-        fonduta.utils)
-   (:require [fonduta.basefont :as base]))
+   (:use fonduta.core
+        fonduta.tensionpaths)
+   (:require [fonduta.views :as views]))
 
 (deffoundry sqfo
   [proportions 0.5
@@ -44,7 +44,7 @@
                         (scale counter-width counter-height)
                         (translate [(+ space v-stems) h-stems]))
    p-counter        (close
-                     (add-to (set-in-path n-counter 2
+                     (add-to-path (set-in-path n-counter 2
                                           (translate (path-elt n-counter 2)
                                                      [0 h-stems]))
                              (pt (+ space v-stems) h-stems)))
@@ -54,15 +54,19 @@
                                    (pt 1.0 1.0))
                         (scale (+ (* counter-width 0.75) (* 0.8 v-stems)) counter-height)
                         (translate (vec+ d [space 0])))
-   n-right          (use-ctpunch [[(rule translate (vec-scale v 0.5))
+   n-right          (use-ctpunch :open
+                                 closed-path
+                                 [[(rule translate (vec-scale v 0.5))
                                    (rule translate
                                          [(min (* (+ counter-width v-stems) 0.5)
                                                h-stems)
                                           h-stems])]
                                   (rule translate d)
                                   (rule translate h)]
-                                 n-counter)
-   p-right          (use-ctpunch [[(rule translate (vec-scale v 0.5))
+                                 (:points n-counter))
+   p-right          (use-ctpunch :closed
+                                 closed-path
+                                 [[(rule translate (vec-scale v 0.5))
                                    (rule translate
                                          [(min (* (+ counter-width v-stems) 0.5)
                                                h-stems)
@@ -70,12 +74,14 @@
                                   (rule translate d)
                                   (rule translate (vec-scale d 1 -1))
                                   (rule translate (vec-neg v))]
-                                 p-counter)
-   c                (use-ctpunch [(rule translate (vec-neg v))
+                                 (:points p-counter))
+   c                (use-ctpunch :open
+                                 closed-path
+                                 [(rule translate (vec-neg v))
                                   (rule translate (vec-scale d -1))
                                   (rule translate (vec-scale d -1 1))
                                   (rule translate v)]
-                                 c-counter)
+                                 (:points c-counter))
    i-dot            (translate (rect [0 0] d)
                                [space (min (+ (alignment x-height) h-stems)
                                            (- (alignment ascender) h-stems))])]
@@ -90,6 +96,8 @@
           (translate (rect [0 0] [(- black-width v-stems) h-stems]) [space (- (alignment x-height) h-stems)])
           (stem (+ space counter-width v-stems) baseline x-height)
           (use-ctpunch
+           :closed
+           closed-path
            [(rule translate [0 bar-height])
             (rule translate [(- v-stems) bar-height])
             (rule translate (vec-neg d))
@@ -102,7 +110,8 @@
                           (pt 0 opening)
                           (pt 0 0)
                           (pt counter-width 0))
-               (translate [(+ space v-stems) h-stems]))))
+               (translate [(+ space v-stems) h-stems])
+               (:points))))
    
    
    (glyph :b
@@ -133,7 +142,9 @@
            opening       (/ (- counter-height bar-height) 2.0)
            open-ratio    (/ opening counter-height)]
           [(+ (* 2 space) black-width) 0]
-          (use-ctpunch [(rule translate (vec-neg v))
+          (use-ctpunch :open
+                       closed-path
+                       [(rule translate (vec-neg v))
                         (rule translate (vec-neg d))
                         (rule translate (vec-scale d -1 1))
                         (rule translate d)
@@ -143,7 +154,8 @@
                                       (pt 0 counter-height)
                                       (pt counter-width counter-height)
                                       (pt counter-width (- counter-height opening)))
-                       (translate [(+ space v-stems) h-stems])))
+                           (translate [(+ space v-stems) h-stems])
+                           (:points)))
           (translate (rect [0 0] [black-width bar-height])
                      [space (+ opening h-stems)]))
 ;;          (translate
@@ -191,11 +203,13 @@
    (glyph :o
           [d [v-stems h-stems]]
           n-advance
-          (use-ctpunch [(rule translate (vec-scale d -1.0 -1.0))
+          (use-ctpunch :closed
+                       closed-path
+                       [(rule translate (vec-scale d -1.0 -1.0))
                         (rule translate (vec-scale d 1.0 -1.0))
                         (rule translate d)
                         (rule translate (vec-scale d -1.0 1.0))]
-                       o-counter))
+                       (:points o-counter)))
    (glyph :p
           []
           n-advance

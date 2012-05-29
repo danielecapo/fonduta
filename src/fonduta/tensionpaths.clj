@@ -73,7 +73,7 @@
   (count (:points p)))
 
 (defn path-elt [p i]
-  ((:points p) i))
+  ((vec (:points p)) i))
 
 ;; 4. 'change'
 
@@ -119,7 +119,8 @@
                  (map :points (conj paths p)))))
 
 (defn set-in-path [p i new]
-  (assoc-in p [:points i] new))
+  (assoc p :points
+         (seq (assoc (vec (:points p)) i new))))
 
 (defn mod-in-path [p i f & args]
   (set-in-path

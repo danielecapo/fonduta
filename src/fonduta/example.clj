@@ -1,7 +1,7 @@
 (ns fonduta.example
-  (:use fonduta.font
-        fonduta.utils)
-  (:require [fonduta.basefont :as base]))
+  (:use fonduta.core
+        fonduta.tensionpaths)
+  (:require [fonduta.views :as views]))
 
 (defn donut [bottom-left top-right h v ext-out ext-int]
   (group (ccw (tense (super-ellipse bottom-left top-right) ext-out))
