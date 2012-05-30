@@ -399,4 +399,11 @@
            [black-width 0]
            diag
            (ccw (from [(/ black-width 2) 0] scale diag  -1 1)))])
-          
+
+
+(views/make-view-with-sliders
+  "sans" sans
+  [[:weight 0 4 1]
+   [:width 0 4 1]
+   [:contrast -1 1 0]
+   [:round 1 1.6 1.12]])
