@@ -41,7 +41,7 @@
                                              (first l)) l))
                                   (list zero)
                                   gs))
-        ascender (ascender f)]
+        ascender (core/ascender f)]
     (fn [c g]
       (doseq [gl (map list gs advances)]
         (draw-glyph c g (first gl) ascender (second gl)))))) 
