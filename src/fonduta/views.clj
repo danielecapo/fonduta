@@ -1,7 +1,7 @@
 (ns fonduta.views
-  (:require [clojure.string :as string])
-  (:use fonduta.basefont
-        seesaw.core
+  (:require [clojure.string :as string]
+            [fonduta.core :as core])
+  (:use seesaw.core
         seesaw.graphics)
   (:import [java.awt Graphics2D]))
 
@@ -35,7 +35,7 @@
        ;   (translate gr (+ zero (first (:advance g))) (- ascender)))))
 
 (defn- draw-glyphs [f zero & glyphs]
-  (let [gs (remove nil? (map (fn [g] (get-glyph f g)) glyphs))
+  (let [gs (remove nil? (map (fn [g] (core/get-glyph f g)) glyphs))
         advances (reverse (reduce (fn [l g]
                                     (cons (+ (first (:advance g))
                                              (first l)) l))
