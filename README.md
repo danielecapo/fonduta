@@ -2,7 +2,7 @@
 
 Fonduta is a small library to experiment with parametric fonts written in Clojure. A lot of things should be fixed, improved, added, or deleted. Consider that I'm not a 'real' programmer, so you can find my code ugly. I know that we can use Metafont to make parametric fonts, but writing 'my own' code enabled me to test some (probably insane) concepts.
 
-I wrote thisit just to be able to **make experiments**, so I tried to keep the font representation  as simple as possible:
+I wrote it just to be able to **make experiments**, so I tried to keep the font representation  as simple as possible:
 
 	(make-font 
 	        :abc                        ;; name
@@ -62,8 +62,27 @@ Variables: a (possibly empty) vector of variables with their values
 the glyph macro has a vector for local variables
 
 There's also another level of outline description (in tensionpaths.clj) written on top of the first one, where I have points, and 'tension' control points.
-'Tension' contol points are placed between two points with a value (the tension) used to fnd the position of 'actual' control points (find interpolating between the tension control point and the point), There are also 'angle' controls where you define the tangents to the curve.
-Path are build using the open-path and closed-path functions.
+'Tension' contol points are placed between two points with a value (the tension) used to find the position of 'actual' control points (find interpolating between the tension control point and the point), There are also 'angle' controls where you define the tangents to the curve.
+
+<img src="https://github.com/danielecapo/fonduta/images/path.png" alt="control point" />
+<img src="https://github.com/danielecapo/fonduta/images/angle-path.png" alt="angle control point" />
+
+The function to build points are:
+
+points
+	(pt x y)
+	(pt [x y])
+
+control points
+	(cpt x y t)
+	(cpt [x y] t)
+
+angle control
+	(acpt a1 a2 t)
+	(acpt [a1 a2] t)
+
+
+Path are build using the `open-path` and `closed-path` functions.
 
 I hope in the future to add different kind of 'paths'.
 
