@@ -192,5 +192,5 @@ I will write a better documentation in the future.
 
 Copyright © 2012 Daniele Capo
 
-Distributed under the Eclipse Public License.
+Distributed under the Eclipse Public License, see LICENSE.
 
