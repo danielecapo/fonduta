@@ -65,8 +65,8 @@ the glyph macro has a vector for local variables
 There's also another level of outline description (in tensionpaths.clj) written on top of the first one, where I have points, and 'tension' control points.
 'Tension' contol points are placed between two points with a value (the tension) used to find the position of 'actual' control points (find interpolating between the tension control point and the point), There are also 'angle' controls where you define the tangents to the curve.
 
-<img src="https://github.com/danielecapo/fonduta/blob/master/images/path.png" alt="control point" />
-<img src="https://github.com/danielecapo/fonduta/blob/master/images/angle-path.png" alt="angle control point" />
+<img src="https://github.com/danielecapo/fonduta/raw/master/images/path.png" alt="control point" />
+<img src="https://github.com/danielecapo/fonduta/raw/master/images/angle-path.png" alt="angle control point" />
 
 The function to build points are:
 
