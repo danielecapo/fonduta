@@ -2,7 +2,7 @@
 
 Fonduta is a small library to experiment with parametric fonts written in Clojure. A lot of things should be fixed, improved, added, or deleted. Consider that I'm not a 'real' programmer, so you can find my code ugly. I know that we can use Metafont to make parametric fonts, but writing 'my own' code enabled me to test some (probably insane) concepts.
 
-I wrote it just to be able to **make experiments**, so I tried to keep the font representation  as simple as possible:
+I wrote it just to be able to *make experiments*, so I *tried* to keep the font representation as simple as possible:
 
 	(make-font 
 	        :abc                        ;; name
@@ -19,7 +19,7 @@ I wrote it just to be able to **make experiments**, so I tried to keep the font 
 
 (this draws a circle in 'o')
 
-Outlines are clojure vectors containing points. There's no difference between 'on curve' and 'off curve' points., the order of appearance in the outline says if a point is a control point,to make an example:
+Outlines are bezier cubic splines and are represented as clojure vectors. There's no difference between 'on curve' and 'off curve' points, it's the order of appearance in the outline that says if a point is a control point, to make an example:
 
 	[p1 cp12 cp21 p2 cp23 cp32 p3 ...]
 
@@ -32,11 +32,12 @@ with control point equal to points.
 Three macro can be used write fonts: `font`, `glyph` and `deffoundry`
 
 Font is like `make-font` with some variations:
-'options' (but only the :grid option is available)
-'alignments'
-'variables'
 
-Options: is a (possibly empty) vector of options (but, at the momento, only :grid can be used)
+* 'options' (but only the :grid option is available)
+* 'alignments'
+* 'variables'
+
+Options: is a vector of options (but, at the moment, only `:grid` can be used)
 
 	[[:grid 100 100]]
 
@@ -54,7 +55,7 @@ Then, inside the font, you can refer to an aligment using:
 	(on-alignment x-height 100) -> [100 500]
 	(on-overshoot x-height 100) -> [100 510]
 
-Variables: a (possibly empty) vector of variables with their values
+Variables: a vector of variables with their values
 
 	[contrast 0.5
 	 stems    100]
